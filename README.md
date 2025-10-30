@@ -2,6 +2,35 @@
 
 🏢 **Мощна Flask web платформа за управление на апартаментни сгради, етажна собственост и общински дейности.**
 
+## ⚡ Quick Start
+
+```bash
+# 1. Клониране на проекта
+git clone <repository-url> webportal
+cd webportal
+
+# 2. Инсталация на dependencies
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+
+# 3. Конфигурация
+cp env.template .env
+# Редактирайте .env файла с вашите настройки
+
+# 4. Бързо инициализиране
+./scripts/quick_setup.sh
+
+# 5. Стартиране
+python run_debug.py
+```
+
+🌐 **Отворете браузър на http://localhost:5001**
+
+🔐 **Default администратор:**
+- Email: `admin@webportal.local`
+- Password: `admin123`
+
 ## 📋 Съдържание
 
 - [Функционалности](#-функционалности)
@@ -92,7 +121,7 @@ pip install -r requirements.txt
 ### 4. Настройка на базата данни
 ```bash
 # Създаване на база данни
-sudo -u postgres createdb webportal_dev
+ -u postgres createdb webportal_dev
 
 # Копиране на конфигурацията
 cp env.template .env
@@ -104,8 +133,11 @@ cp env.template .env
 # Стартиране на миграциите
 flask db upgrade
 
-# Създаване на първоначални данни (опционално)
-python -c "from app import create_app, db; from app.models.user import User; from werkzeug.security import generate_password_hash; app=create_app(); app.app_context().__enter__(); admin=User(email='admin@example.com', password_hash=generate_password_hash('admin123'), is_superuser=True, is_active=True, is_verified=True, first_name='Admin', last_name='User'); db.session.add(admin); db.session.commit(); print('Admin user created: admin@example.com / admin123')"
+# Създаване на администратор
+python scripts/create_admin.py
+
+# За персонализиран администратор
+python scripts/create_admin.py --custom
 ```
 
 ### 6. Стартиране на приложението
@@ -120,7 +152,14 @@ python webportal.py
 ### 7. Достъп до приложението
 - **Web интерфейс**: http://localhost:5001
 - **Admin панел**: http://localhost:5001/admin
-- **Login**: admin@example.com / admin123
+
+### 8. Default администратор
+```
+📧 Email: admin@webportal.local
+🔑 Password: admin123
+🔐 Role: Superuser
+```
+⚠️ **ВАЖНО**: Сменете паролата след първото влизане!
 
 ## 📦 Инсталация
 
@@ -336,9 +375,9 @@ pip install -r requirements-prod.txt
 gunicorn --config gunicorn.conf.py wsgi:app
 
 # Със systemd service
-sudo cp gunicorn.service /etc/systemd/system/
-sudo systemctl enable gunicorn
-sudo systemctl start gunicorn
+ cp gunicorn.service /etc/systemd/system/
+ systemctl enable gunicorn
+ systemctl start gunicorn
 ```
 
 ### Nginx конфигурация

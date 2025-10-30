@@ -38,24 +38,24 @@
 
 ```bash
 # Ubuntu/Debian
-sudo apt update && sudo apt upgrade -y
+ apt update &&  apt upgrade -y
 
 # CentOS/RHEL
-sudo yum update -y
+ yum update -y
 # или за newer versions
-sudo dnf update -y
+ dnf update -y
 ```
 
 ### 2. Инсталация на основни пакети
 
 ```bash
 # Ubuntu/Debian
-sudo apt install -y python3.11 python3.11-venv python3.11-dev \
+ apt install -y python3.11 python3.11-venv python3.11-dev \
     postgresql postgresql-contrib nginx git curl \
     build-essential libpq-dev supervisor
 
 # CentOS/RHEL
-sudo dnf install -y python3.11 python3.11-devel \
+ dnf install -y python3.11 python3.11-devel \
     postgresql postgresql-server postgresql-contrib \
     nginx git curl gcc postgresql-devel supervisor
 ```
@@ -64,14 +64,14 @@ sudo dnf install -y python3.11 python3.11-devel \
 
 ```bash
 # Създаване на системен потребител
-sudo useradd -m -s /bin/bash webportal
+ useradd -m -s /bin/bash webportal
 
 # Създаване на директории
-sudo mkdir -p /opt/webportal
-sudo chown webportal:webportal /opt/webportal
+ mkdir -p /opt/webportal
+ chown webportal:webportal /opt/webportal
 
 # Преминаване към потребителя
-sudo su - webportal
+ su - webportal
 ```
 
 ## 📦 Инсталация
@@ -160,11 +160,11 @@ chmod 755 logs uploads static/uploads
 
 ```bash
 # Като root потребител
-sudo systemctl enable postgresql
-sudo systemctl start postgresql
+ systemctl enable postgresql
+ systemctl start postgresql
 
 # Създаване на потребител и база данни
-sudo -u postgres psql << EOF
+ -u postgres psql << EOF
 CREATE USER webportal_user WITH PASSWORD 'secure_password_change_this';
 CREATE DATABASE webportal OWNER webportal_user;
 GRANT ALL PRIVILEGES ON DATABASE webportal TO webportal_user;
@@ -177,7 +177,7 @@ EOF
 
 ```bash
 # Редактиране на pg_hba.conf
-sudo nano /etc/postgresql/13/main/pg_hba.conf
+ nano /etc/postgresql/13/main/pg_hba.conf
 
 # Добавете реда:
 # local   webportal    webportal_user                     md5
@@ -193,27 +193,16 @@ source venv/bin/activate
 # Стартиране на миграциите
 flask db upgrade
 
-# Създаване на admin потребител
-python -c "
-from app import create_app, db
-from app.models.user import User
-from werkzeug.security import generate_password_hash
+# Създаване на администратор
+python scripts/create_admin.py
 
-app = create_app()
-with app.app_context():
-    admin = User(
-        email='admin@yourdomain.com',
-        password_hash=generate_password_hash('change_this_password'),
-        is_superuser=True,
-        is_active=True,
-        is_verified=True,
-        first_name='System',
-        last_name='Administrator'
-    )
-    db.session.add(admin)
-    db.session.commit()
-    print('Admin user created: admin@yourdomain.com')
-"
+# За персонализиран администратор (препоръчително за production)
+python scripts/create_admin.py --custom
+
+# Default администратор (само за тестване):
+# Email: admin@webportal.local
+# Password: admin123
+# ⚠️ ВАЖНО: Сменете паролата веднага след инсталация!
 ```
 
 ## 🌐 Nginx конфигурация
@@ -222,7 +211,7 @@ with app.app_context():
 
 ```bash
 # Създаване на конфигурационен файл
-sudo nano /etc/nginx/sites-available/webportal
+ nano /etc/nginx/sites-available/webportal
 ```
 
 ```nginx
@@ -310,13 +299,13 @@ server {
 
 ```bash
 # Активиране на конфигурацията
-sudo ln -s /etc/nginx/sites-available/webportal /etc/nginx/sites-enabled/
+ ln -s /etc/nginx/sites-available/webportal /etc/nginx/sites-enabled/
 
 # Тестване на конфигурацията
-sudo nginx -t
+ nginx -t
 
 # Рестартиране на Nginx
-sudo systemctl reload nginx
+ systemctl reload nginx
 ```
 
 ## 🔒 SSL/TLS настройка
@@ -325,13 +314,13 @@ sudo systemctl reload nginx
 
 ```bash
 # Инсталация на Certbot
-sudo apt install certbot python3-certbot-nginx
+ apt install certbot python3-certbot-nginx
 
 # Получаване на SSL сертификат
-sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+ certbot --nginx -d yourdomain.com -d www.yourdomain.com
 
 # Автоматично обновяване
-sudo crontab -e
+ crontab -e
 # Добавете: 0 12 * * * /usr/bin/certbot renew --quiet
 ```
 
@@ -339,7 +328,7 @@ sudo crontab -e
 
 ```bash
 # Генериране на самоподписан сертификат (за тестване)
-sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout /etc/ssl/private/webportal.key \
     -out /etc/ssl/certs/webportal.crt
 
@@ -390,7 +379,7 @@ graceful_timeout = 30
 
 ```bash
 # Създаване на service файл
-sudo nano /etc/systemd/system/webportal.service
+ nano /etc/systemd/system/webportal.service
 ```
 
 ```ini
@@ -424,19 +413,19 @@ WantedBy=multi-user.target
 
 ```bash
 # Зареждане на новия service
-sudo systemctl daemon-reload
+ systemctl daemon-reload
 
 # Активиране на сервиза
-sudo systemctl enable webportal
+ systemctl enable webportal
 
 # Стартиране
-sudo systemctl start webportal
+ systemctl start webportal
 
 # Проверка на статуса
-sudo systemctl status webportal
+ systemctl status webportal
 
 # Преглед на логове
-sudo journalctl -u webportal -f
+ journalctl -u webportal -f
 ```
 
 ## 📊 Мониторинг
@@ -445,7 +434,7 @@ sudo journalctl -u webportal -f
 
 ```bash
 # Създаване на logrotate конфигурация
-sudo nano /etc/logrotate.d/webportal
+ nano /etc/logrotate.d/webportal
 ```
 
 ```
@@ -467,7 +456,7 @@ sudo nano /etc/logrotate.d/webportal
 
 ```bash
 # Проверка на услугите
-sudo systemctl status webportal nginx postgresql
+ systemctl status webportal nginx postgresql
 
 # Проверка на портове
 ss -tulpn | grep -E ':(80|443|8000|5432)'
@@ -602,7 +591,7 @@ pip install -r requirements-prod.txt
 flask db upgrade
 
 # Рестартиране на сервиза
-sudo systemctl restart webportal
+ systemctl restart webportal
 ```
 
 ### Log анализ
@@ -622,7 +611,7 @@ tail -1000 /opt/webportal/logs/gunicorn_access.log | awk '{print $10}' | sort -n
 
 ```bash
 # PostgreSQL оптимизация
-sudo nano /etc/postgresql/13/main/postgresql.conf
+ nano /etc/postgresql/13/main/postgresql.conf
 
 # Примерни настройки за 4GB RAM сървър:
 # shared_buffers = 1GB
@@ -636,8 +625,8 @@ sudo nano /etc/postgresql/13/main/postgresql.conf
 **Проблем**: 502 Bad Gateway
 ```bash
 # Проверка на Gunicorn
-sudo systemctl status webportal
-sudo journalctl -u webportal -n 50
+ systemctl status webportal
+ journalctl -u webportal -n 50
 ```
 
 **Проблем**: Бавна производителност
@@ -650,8 +639,8 @@ iotop
 **Проблем**: Database връзка се отказва
 ```bash
 # Проверка на PostgreSQL
-sudo systemctl status postgresql
-sudo -u postgres psql -c "SELECT version();"
+ systemctl status postgresql
+ -u postgres psql -c "SELECT version();"
 ```
 
 ---
@@ -662,7 +651,8 @@ sudo -u postgres psql -c "SELECT version();"
 - [ ] PostgreSQL е инсталиран и конфигуриран
 - [ ] Приложението е клонирано и настроено
 - [ ] Database миграциите са изпълнени
-- [ ] Admin потребител е създаден
+- [ ] Admin потребител е създаден (admin@webportal.local / admin123)
+- [ ] Default паролата е сменена с по-сигурна
 - [ ] Nginx е конфигуриран правилно
 - [ ] SSL сертификатът е инсталиран
 - [ ] Systemd service е активиран
