@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+
+{% block title %}Потребители{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-users me-2"></i>Потребители</h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Начало</a></li>
+                    <li class="breadcrumb-item active">Потребители</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <a href="{{ url_for('users.new') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>Нов потребител
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Всички потребители</h5>
+                            <h2 class="mb-0">{{ stats.total_users }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Активни</h5>
+                            <h2 class="mb-0">{{ stats.active_users }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Администратори</h5>
+                            <h2 class="mb-0">{{ stats.superusers }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-shield fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Верифицирани</h5>
+                            <h2 class="mb-0">{{ stats.verified_users }}</h2>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-user-check fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('users.index') }}">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="search" class="form-label">Търсене</label>
+                        <input type="text" class="form-control" name="search" id="search" 
+                               placeholder="Име, имейл, телефон..." value="{{ search }}">
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="role" class="form-label">Роля</label>
+                        <select class="form-select" name="role" id="role">
+                            <option value="">Всички роли</option>
+                            <option value="superadmin" {% if filter_role == 'superadmin' %}selected{% endif %}>Супер администратор</option>
+                            <option value="staff" {% if filter_role == 'staff' %}selected{% endif %}>Персонал</option>
+                            <option value="accountant" {% if filter_role == 'accountant' %}selected{% endif %}>Счетоводител</option>
+                            <option value="resident" {% if filter_role == 'resident' %}selected{% endif %}>Живущ</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label for="active" class="form-label">Статус</label>
+                        <select class="form-select" name="active" id="active">
+                            <option value="">Всички</option>
+                            <option value="true" {% if filter_active == 'true' %}selected{% endif %}>Активни</option>
+                            <option value="false" {% if filter_active == 'false' %}selected{% endif %}>Неактивни</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-2 d-flex align-items-end">
+                        <button type="submit" class="btn btn-primary me-2">
+                            <i class="fas fa-search"></i> Търси
+                        </button>
+                        <a href="{{ url_for('users.index') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Users Table -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-list me-1"></i>
+                Списък потребители
+                <span class="badge bg-secondary ms-2">{{ users.total }} общо</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if users.items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Потребител</th>
+                            <th>Контакти</th>
+                            <th>Роля</th>
+                            <th>Членства</th>
+                            <th>Статус</th>
+                            <th>Регистрация</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users.items %}
+                        <tr>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center text-white me-2">
+                                        {{ user.first_name[0] if user.first_name else user.email[0].upper() }}
+                                    </div>
+                                    <div>
+                                        <div class="fw-semibold">{{ user.full_name or user.email }}</div>
+                                        {% if user.is_superuser %}
+                                        <small class="text-danger"><i class="fas fa-crown"></i> Супер администратор</small>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <i class="fas fa-envelope me-1"></i>{{ user.email }}
+                                </div>
+                                {% if user.phone %}
+                                <div class="text-muted small">
+                                    <i class="fas fa-phone me-1"></i>{{ user.phone }}
+                                </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.global_role %}
+                                <span class="badge bg-info">
+                                    {% if user.global_role.value == 'superadmin' %}Супер админ
+                                    {% elif user.global_role.value == 'staff' %}Персонал
+                                    {% elif user.global_role.value == 'accountant' %}Счетоводител
+                                    {% else %}{{ user.global_role.value }}
+                                    {% endif %}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-secondary">Живущ</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% set active_memberships = user.memberships|selectattr('is_active')|list %}
+                                {% if active_memberships %}
+                                <span class="badge bg-success">{{ active_memberships|length }} активни</span>
+                                {% else %}
+                                <span class="text-muted">Няма</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.is_active %}
+                                <span class="badge bg-success">Активен</span>
+                                {% else %}
+                                <span class="badge bg-danger">Неактивен</span>
+                                {% endif %}
+                                
+                                {% if user.is_verified %}
+                                <span class="badge bg-info ms-1">Верифициран</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ user.created_at.strftime('%d.%m.%Y') }}
+                                    {% if user.last_login %}
+                                    <br>Последен вход: {{ user.last_login.strftime('%d.%m.%Y %H:%M') }}
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('users.view_user', id=user.id) }}" 
+                                       class="btn btn-outline-primary" title="Преглед">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('user.edit_view', id=user.id) }}" 
+                                       class="btn btn-outline-secondary" title="Редактиране">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{{ url_for('users.user_memberships', id=user.id) }}" 
+                                       class="btn btn-outline-info" title="Членства">
+                                        <i class="fas fa-building"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if users.pages > 1 %}
+            <nav aria-label="Пагинация">
+                <ul class="pagination justify-content-center">
+                    {% if users.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('users.index', page=users.prev_num, search=search, role=filter_role, active=filter_active) }}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                    
+                    {% for page_num in users.iter_pages() %}
+                        {% if page_num %}
+                            {% if page_num != users.page %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('users.index', page=page_num, search=search, role=filter_role, active=filter_active) }}">
+                                    {{ page_num }}
+                                </a>
+                            </li>
+                            {% else %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ page_num }}</span>
+                            </li>
+                            {% endif %}
+                        {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link">...</span>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if users.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('users.index', page=users.next_num, search=search, role=filter_role, active=filter_active) }}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+            
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Няма намерени потребители</h5>
+                <p class="text-muted">Опитайте да промените критериите за търсене или добавете нов потребител.</p>
+                <a href="{{ url_for('user.create_view') }}" class="btn btn-primary">
+                    <i class="fas fa-plus me-1"></i>Добави потребител
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-submit search form on Enter
+document.getElementById('search').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        this.form.submit();
+    }
+});
+</script>
+{% endblock %}

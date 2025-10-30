@@ -1,0 +1,41 @@
+# Production Requirements for WebPortal
+# Install with: pip install -r requirements-prod.txt
+
+# Core Flask Framework
+Flask>=3.0.0
+Flask-SQLAlchemy>=3.1.0
+Flask-Migrate>=4.0.0
+Flask-Login>=0.6.0
+Flask-Session>=0.8.0
+Flask-Admin>=1.6.0
+Flask-WTF>=1.2.0
+
+# Database
+psycopg2-binary>=2.9.0
+SQLAlchemy>=2.0.0
+alembic>=1.17.0
+
+# WSGI Server
+gunicorn>=20.1.0
+
+# Environment and Configuration
+python-dotenv>=1.0.0
+
+# Security and Forms
+WTForms>=3.2.0
+itsdangerous>=2.2.0
+
+# Caching
+cachelib>=0.13.0
+
+# Utilities
+click>=8.1.0
+Jinja2>=3.1.0
+Werkzeug>=3.1.0
+MarkupSafe>=2.0.0
+blinker>=1.9.0
+
+# Optional: Additional integrations
+# requests>=2.31.0  # For external API calls
+# celery>=5.3.0     # For background tasks
+# redis>=5.0.0      # For caching and sessions

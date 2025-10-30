@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+
+{% block title %}Профил - WebPortal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">
+                <i class="bi bi-person"></i> Моят профил
+            </h1>
+            <div class="btn-toolbar mb-2 mb-md-0">
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="editProfile()">
+                    <i class="bi bi-pencil"></i> Редактиране
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <!-- Profile information card -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-person-circle me-2"></i>Лична информация
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>Имейл адрес:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user.email }}
+                        {% if user.is_verified %}
+                            <span class="badge bg-success ms-2">Потвърден</span>
+                        {% else %}
+                            <span class="badge bg-warning ms-2">Непотвърден</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>Телефон:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user.phone or "Не е въведен" }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>Пълно име:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user.full_name or "Не е въведено" }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>Глобална роля:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        <span class="badge bg-primary">{{ user.global_role.value if user.global_role else 'resident' }}</span>
+                        {% if user.is_superuser %}
+                            <span class="badge bg-danger ms-2">Супер администратор</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>Регистрация:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user.created_at.strftime('%d.%m.%Y в %H:%M') }}
+                    </div>
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-sm-3">
+                        <strong>Последен вход:</strong>
+                    </div>
+                    <div class="col-sm-9">
+                        {{ user.last_login.strftime('%d.%m.%Y в %H:%M') if user.last_login else "Първи път" }}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- My buildings/memberships -->
+        {% if user.memberships %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-building me-2"></i>Моите обекти
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Сграда</th>
+                                <th>Вход</th>
+                                <th>Етаж</th>
+                                <th>Номер</th>
+                                <th>Роля</th>
+                                <th>От дата</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for membership in user.memberships %}
+                            <tr>
+                                <td>{{ membership.unit.building.name }}</td>
+                                <td>{{ membership.unit.entrance }}</td>
+                                <td>{{ membership.unit.floor }}</td>
+                                <td>{{ membership.unit.number }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ membership.role.value }}</span>
+                                    {% if membership.is_primary %}
+                                        <span class="badge bg-success">Основен</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ membership.since.strftime('%d.%m.%Y') if membership.since }}</td>
+                                <td>
+                                    {% if membership.is_active %}
+                                        <span class="badge bg-success">Активен</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Неактивен</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Settings card -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-gear me-2"></i>Настройки
+                </h6>
+            </div>
+            <div class="card-body">
+                <h6>Тема на интерфейса</h6>
+                <select class="form-select mb-3" id="theme">
+                    <option value="light" {% if user.settings.get('theme') == 'light' %}selected{% endif %}>Светла</option>
+                    <option value="dark" {% if user.settings.get('theme') == 'dark' %}selected{% endif %}>Тъмна</option>
+                </select>
+                
+                <h6>Език</h6>
+                <select class="form-select mb-3" id="language">
+                    <option value="bg" {% if user.settings.get('language') == 'bg' %}selected{% endif %}>Български</option>
+                    <option value="en" {% if user.settings.get('language') == 'en' %}selected{% endif %}>English</option>
+                </select>
+                
+                <h6>Известия</h6>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="emailNotifications" 
+                           {% if user.settings.get('notifications', {}).get('email', True) %}checked{% endif %}>
+                    <label class="form-check-label" for="emailNotifications">
+                        Email известия
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="pushNotifications"
+                           {% if user.settings.get('notifications', {}).get('push', True) %}checked{% endif %}>
+                    <label class="form-check-label" for="pushNotifications">
+                        Push известия
+                    </label>
+                </div>
+                
+                <button class="btn btn-primary btn-sm mt-3" onclick="saveSettings()">
+                    <i class="bi bi-check"></i> Запазване
+                </button>
+            </div>
+        </div>
+        
+        <!-- Security card -->
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-danger">
+                    <i class="bi bi-shield-lock me-2"></i>Сигурност
+                </h6>
+            </div>
+            <div class="card-body">
+                <a href="#" class="btn btn-outline-warning btn-sm w-100 mb-2" onclick="changePassword()">
+                    <i class="bi bi-key"></i> Смяна на парола
+                </a>
+                
+                {% if user.access_tokens %}
+                <a href="#" class="btn btn-outline-info btn-sm w-100 mb-2" onclick="showAccessTokens()">
+                    <i class="bi bi-credit-card"></i> Ключове за достъп ({{ user.access_tokens|length }})
+                </a>
+                {% endif %}
+                
+                <a href="#" class="btn btn-outline-secondary btn-sm w-100" onclick="downloadData()">
+                    <i class="bi bi-download"></i> Изтегляне на данни
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function editProfile() {
+        alert('Редактирането на профил ще бъде добавено скоро...');
+    }
+    
+    function saveSettings() {
+        const settings = {
+            theme: document.getElementById('theme').value,
+            language: document.getElementById('language').value,
+            notifications: {
+                email: document.getElementById('emailNotifications').checked,
+                push: document.getElementById('pushNotifications').checked
+            }
+        };
+        
+        // TODO: Send AJAX request to update settings
+        alert('Настройките са запазени!');
+    }
+    
+    function changePassword() {
+        alert('Смяната на парола ще бъде добавена скоро...');
+    }
+    
+    function showAccessTokens() {
+        alert('Управлението на ключове за достъп ще бъде добавено скоро...');
+    }
+    
+    function downloadData() {
+        alert('Изтеглянето на данни ще бъде добавено скоро...');
+    }
+</script>
+{% endblock %}

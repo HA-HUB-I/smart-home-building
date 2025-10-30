@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+
+{% block title %}Нов Разход{% endblock %}
+
+{% block extra_css %}
+<style>
+.allocation-preview {
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+
+.unit-allocation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.unit-allocation:last-child {
+    border-bottom: none;
+}
+
+.formula-hint {
+    font-size: 0.875rem;
+    color: #6c757d;
+    font-style: italic;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-plus-circle me-2"></i>Създаване на Нов Разход</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('finance.index') }}">Финанси</a></li>
+                            <li class="breadcrumb-item"><a href="{{ url_for('finance.expenses') }}">Разходи</a></li>
+                            <li class="breadcrumb-item active">Нов</li>
+                        </ol>
+                    </nav>
+                </div>
+                <a href="{{ url_for('finance.expenses') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Назад към Разходи
+                </a>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-receipt me-2"></i>Данни за Разхода</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" id="expenseForm">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}"/>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="building_id" class="form-label">Сграда</label>
+                                            <select name="building_id" id="building_id" class="form-select" onchange="loadCategories(); loadUnits();" required>
+                                                <option value="">Изберете сграда...</option>
+                                                {% for building in buildings %}
+                                                <option value="{{ building.id }}">{{ building.name }} - {{ building.address.street }} {{ building.address.number }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="period" class="form-label">Период</label>
+                                            <input type="month" name="period" id="period" class="form-control" required>
+                                            <div class="form-text">Месец, за който се отнася разходът</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="category_id" class="form-label">Категория</label>
+                                            <select name="category_id" id="category_id" class="form-select" onchange="updateAllocationMethod()" required>
+                                                <option value="">Първо изберете сграда...</option>
+                                            </select>
+                                            <div class="form-text">Категория определя методът на разпределение</div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="amount_total" class="form-label">Обща Сума</label>
+                                            <div class="input-group">
+                                                <input type="number" name="amount_total" id="amount_total" class="form-control" step="0.01" min="0" onchange="calculateAllocations()" required>
+                                                <span class="input-group-text">лв.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Описание</label>
+                                    <textarea name="description" id="description" class="form-control" rows="3" placeholder="Опишете разхода (фактура №, доставчик, период и т.н.)"></textarea>
+                                </div>
+
+                                <!-- Allocation Method Info -->
+                                <div id="allocationInfo" class="alert alert-info" style="display: none;">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Метод на разпределение:</strong>
+                                    <span id="allocationMethod">-</span>
+                                    <div class="formula-hint mt-1" id="allocationHint"></div>
+                                </div>
+
+                                <!-- Custom Allocations (for manual override) -->
+                                <div id="customAllocations" style="display: none;">
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="enableCustomAllocations" onchange="toggleCustomAllocations()">
+                                            <label class="form-check-label" for="enableCustomAllocations">
+                                                Ръчно разпределение на сумите
+                                            </label>
+                                        </div>
+                                        <div class="form-text">Отметнете за да зададете собствени суми за всеки апартамент</div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between">
+                                    <button type="button" class="btn btn-outline-primary" onclick="previewAllocations()">
+                                        <i class="fas fa-eye me-1"></i>Преглед на Разпределението
+                                    </button>
+                                    <div>
+                                        <button type="button" class="btn btn-secondary me-2" onclick="saveDraft()">
+                                            <i class="fas fa-save me-1"></i>Запази като Чернова
+                                        </button>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-check me-1"></i>Създай Разход
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Allocation Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-calculator me-2"></i>Разпределение по Апартаменти</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="allocationPreview" class="text-center text-muted py-3">
+                                <i class="fas fa-calculator fa-2x mb-2"></i>
+                                <p>Изберете сграда и сума за преглед на разпределението</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Category Info -->
+                    <div class="card mt-3" id="categoryInfo" style="display: none;">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-tag me-2"></i>Информация за Категорията</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="categoryDetails">
+                                <!-- Category details will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Expenses -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-history me-2"></i>Последни Разходи</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="recentExpenses">
+                                <div class="text-center text-muted py-2">
+                                    <small>Изберете сграда за преглед на последните разходи</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Allocation Modal -->
+<div class="modal fade" id="customAllocationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ръчно Разпределение на Суми</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Внимание:</strong> Ръчното разпределение отменя автоматичния метод на категорията.
+                </div>
+                
+                <div class="mb-3">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <strong>Обща сума:</strong> <span id="modalTotalAmount">0.00 лв.</span>
+                        </div>
+                        <div class="col-md-6">
+                            <strong>Разпределена сума:</strong> <span id="modalAllocatedAmount" class="text-info">0.00 лв.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Апартамент</th>
+                                <th>Автоматична Сума</th>
+                                <th>Ръчна Сума</th>
+                                <th>Разлика</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customAllocationTable">
+                            <!-- Allocation rows will be generated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отказ</button>
+                <button type="button" class="btn btn-primary" onclick="applyCustomAllocations()">
+                    <i class="fas fa-check me-1"></i>Приложи Разпределението
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let categories = [];
+let units = [];
+let currentAllocations = [];
+
+function loadCategories() {
+    const buildingId = document.getElementById('building_id').value;
+    if (!buildingId) {
+        document.getElementById('category_id').innerHTML = '<option value="">Първо изберете сграда</option>';
+        return;
+    }
+
+    fetch(`/finance/api/categories/${buildingId}`)
+        .then(response => response.json())
+        .then(data => {
+            categories = data.categories || [];
+            const select = document.getElementById('category_id');
+            
+            if (categories.length === 0) {
+                select.innerHTML = '<option value="">Няма категории за тази сграда</option>';
+                
+                // Show helpful message
+                showNoCategoriesMessage();
+                return;
+            }
+            
+            select.innerHTML = '<option value="">Изберете категория...</option>';
+            
+            categories.forEach(category => {
+                const option = document.createElement('option');
+                option.value = category.id;
+                option.textContent = `${category.name} (${category.allocation_method})`;
+                option.dataset.method = category.allocation_method;
+                select.appendChild(option);
+            });
+            
+            // Hide no categories message if it exists
+            hideNoCategoriesMessage();
+        })
+        .catch(error => {
+            console.error('Error loading categories:', error);
+        });
+}
+
+function loadUnits() {
+    const buildingId = document.getElementById('building_id').value;
+    if (!buildingId) {
+        units = [];
+        return;
+    }
+
+    fetch(`/finance/api/units/${buildingId}`)
+        .then(response => response.json())
+        .then(data => {
+            units = data.units || [];
+            loadRecentExpenses();
+        })
+        .catch(error => {
+            console.error('Error loading units:', error);
+        });
+}
+
+function updateAllocationMethod() {
+    const categorySelect = document.getElementById('category_id');
+    const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+    
+    if (selectedOption && selectedOption.dataset.method) {
+        const method = selectedOption.dataset.method;
+        const info = document.getElementById('allocationInfo');
+        const methodSpan = document.getElementById('allocationMethod');
+        const hint = document.getElementById('allocationHint');
+        
+        const methodNames = {
+            'shares': 'По идеални части',
+            'per_unit': 'Еднакво за всички апартаменти',
+            'per_person': 'По брой живущи',
+            'metered': 'По показания на измервателни уреди'
+        };
+        
+        const methodHints = {
+            'shares': 'Разходът се разпределя пропорционално на идеалните части на всеки апартамент',
+            'per_unit': 'Разходът се разделя еднакво между всички апартаменти в сградата',
+            'per_person': 'Разходът се разпределя според броя на обитателите в всеки апартамент',
+            'metered': 'Разходът се разпределя според показанията на индивидуални измервателни уреди'
+        };
+        
+        methodSpan.textContent = methodNames[method] || method;
+        hint.textContent = methodHints[method] || '';
+        info.style.display = 'block';
+        
+        // Show category info
+        showCategoryInfo(selectedOption.value);
+        
+        // Enable custom allocations option for certain methods
+        const customDiv = document.getElementById('customAllocations');
+        if (method === 'metered' || method === 'per_person') {
+            customDiv.style.display = 'block';
+        } else {
+            customDiv.style.display = 'none';
+        }
+        
+        // Recalculate allocations if amount is set
+        calculateAllocations();
+    } else {
+        document.getElementById('allocationInfo').style.display = 'none';
+        document.getElementById('categoryInfo').style.display = 'none';
+        document.getElementById('customAllocations').style.display = 'none';
+    }
+}
+
+function showCategoryInfo(categoryId) {
+    const category = categories.find(c => c.id == categoryId);
+    if (category) {
+        const details = document.getElementById('categoryDetails');
+        details.innerHTML = `
+            <div class="mb-2">
+                <strong>Код:</strong> ${category.code}
+            </div>
+            <div class="mb-2">
+                <strong>Описание:</strong> ${category.description || 'Няма'}
+            </div>
+            <div class="mb-2">
+                <strong>Метод:</strong> ${category.allocation_method}
+            </div>
+            ${category.settings ? `
+                <div class="mb-2">
+                    <strong>Настройки:</strong>
+                    <pre class="small">${JSON.stringify(category.settings, null, 2)}</pre>
+                </div>
+            ` : ''}
+        `;
+        document.getElementById('categoryInfo').style.display = 'block';
+    }
+}
+
+function calculateAllocations() {
+    const buildingId = document.getElementById('building_id').value;
+    const categoryId = document.getElementById('category_id').value;
+    const amount = parseFloat(document.getElementById('amount_total').value) || 0;
+    
+    if (!buildingId || !categoryId || !amount || units.length === 0) {
+        document.getElementById('allocationPreview').innerHTML = `
+            <div class="text-center text-muted py-3">
+                <i class="fas fa-calculator fa-2x mb-2"></i>
+                <p>Попълнете всички полета за преглед на разпределението</p>
+            </div>
+        `;
+        return;
+    }
+
+    const category = categories.find(c => c.id == categoryId);
+    if (!category) return;
+
+    // Calculate allocations based on method
+    let allocations = [];
+    
+    switch (category.allocation_method) {
+        case 'shares':
+            const totalShares = units.reduce((sum, unit) => sum + (parseFloat(unit.shares) || 0), 0);
+            allocations = units.map(unit => ({
+                unit: unit,
+                amount: totalShares > 0 ? (amount * (parseFloat(unit.shares) || 0)) / totalShares : 0,
+                formula: `${amount} × (${unit.shares} / ${totalShares})`
+            }));
+            break;
+            
+        case 'per_unit':
+            const amountPerUnit = amount / units.length;
+            allocations = units.map(unit => ({
+                unit: unit,
+                amount: amountPerUnit,
+                formula: `${amount} ÷ ${units.length}`
+            }));
+            break;
+            
+        case 'per_person':
+            const totalPeople = units.reduce((sum, unit) => sum + (unit.occupancy_count || 1), 0);
+            allocations = units.map(unit => ({
+                unit: unit,
+                amount: (amount * (unit.occupancy_count || 1)) / totalPeople,
+                formula: `${amount} × (${unit.occupancy_count || 1} / ${totalPeople})`
+            }));
+            break;
+            
+        case 'metered':
+            // For metered, show equal distribution as default (to be customized)
+            const meteredAmount = amount / units.length;
+            allocations = units.map(unit => ({
+                unit: unit,
+                amount: meteredAmount,
+                formula: 'По показания (настройте ръчно)',
+                isMetered: true
+            }));
+            break;
+    }
+    
+    currentAllocations = allocations;
+    displayAllocations(allocations);
+}
+
+function displayAllocations(allocations) {
+    const preview = document.getElementById('allocationPreview');
+    
+    if (allocations.length === 0) {
+        preview.innerHTML = `
+            <div class="text-center text-muted py-3">
+                <i class="fas fa-calculator fa-2x mb-2"></i>
+                <p>Няма апартаменти за разпределение</p>
+            </div>
+        `;
+        return;
+    }
+    
+    const totalAllocated = allocations.reduce((sum, alloc) => sum + alloc.amount, 0);
+    
+    let html = `
+        <div class="mb-2 text-center">
+            <strong>Общо разпределено: ${totalAllocated.toFixed(2)} лв.</strong>
+        </div>
+        <div class="allocation-preview">
+    `;
+    
+    allocations.forEach(allocation => {
+        const unit = allocation.unit;
+        html += `
+            <div class="unit-allocation">
+                <div>
+                    <strong>${unit.entrance}${unit.number}</strong><br>
+                    <small class="text-muted">${allocation.formula}</small>
+                </div>
+                <div class="text-end">
+                    <strong>${allocation.amount.toFixed(2)} лв.</strong>
+                    ${allocation.isMetered ? '<br><small class="text-warning">Настройте</small>' : ''}
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    preview.innerHTML = html;
+}
+
+function previewAllocations() {
+    calculateAllocations();
+    if (currentAllocations.length > 0) {
+        // Scroll to preview
+        document.getElementById('allocationPreview').scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+function toggleCustomAllocations() {
+    const isEnabled = document.getElementById('enableCustomAllocations').checked;
+    if (isEnabled && currentAllocations.length > 0) {
+        showCustomAllocationModal();
+    }
+}
+
+function showCustomAllocationModal() {
+    const modal = new bootstrap.Modal(document.getElementById('customAllocationModal'));
+    const amount = parseFloat(document.getElementById('amount_total').value) || 0;
+    
+    document.getElementById('modalTotalAmount').textContent = amount.toFixed(2) + ' лв.';
+    
+    const tableBody = document.getElementById('customAllocationTable');
+    tableBody.innerHTML = '';
+    
+    currentAllocations.forEach((allocation, index) => {
+        const row = tableBody.insertRow();
+        row.innerHTML = `
+            <td>${allocation.unit.entrance}${allocation.unit.number}</td>
+            <td>${allocation.amount.toFixed(2)} лв.</td>
+            <td>
+                <input type="number" class="form-control form-control-sm custom-amount" 
+                       step="0.01" min="0" value="${allocation.amount.toFixed(2)}" 
+                       data-index="${index}" onchange="updateAllocatedTotal()">
+            </td>
+            <td><span class="difference" data-index="${index}">0.00</span> лв.</td>
+        `;
+    });
+    
+    modal.show();
+    updateAllocatedTotal();
+}
+
+function updateAllocatedTotal() {
+    const inputs = document.querySelectorAll('.custom-amount');
+    let total = 0;
+    
+    inputs.forEach((input, index) => {
+        const customAmount = parseFloat(input.value) || 0;
+        const originalAmount = currentAllocations[index].amount;
+        const difference = customAmount - originalAmount;
+        
+        total += customAmount;
+        
+        const diffSpan = document.querySelector(`[data-index="${index}"].difference`);
+        diffSpan.textContent = difference.toFixed(2);
+        diffSpan.className = 'difference ' + (difference > 0 ? 'text-success' : difference < 0 ? 'text-danger' : 'text-muted');
+    });
+    
+    document.getElementById('modalAllocatedAmount').textContent = total.toFixed(2) + ' лв.';
+}
+
+function applyCustomAllocations() {
+    const inputs = document.querySelectorAll('.custom-amount');
+    
+    inputs.forEach((input, index) => {
+        const customAmount = parseFloat(input.value) || 0;
+        currentAllocations[index].amount = customAmount;
+        currentAllocations[index].formula = 'Ръчно зададено';
+    });
+    
+    displayAllocations(currentAllocations);
+    bootstrap.Modal.getInstance(document.getElementById('customAllocationModal')).hide();
+}
+
+function loadRecentExpenses() {
+    const buildingId = document.getElementById('building_id').value;
+    if (!buildingId) return;
+    
+    fetch(`/finance/api/recent-expenses/${buildingId}`)
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('recentExpenses');
+            const expenses = data.expenses || [];
+            
+            if (expenses.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted py-2"><small>Няма последни разходи</small></div>';
+                return;
+            }
+            
+            let html = '';
+            expenses.slice(0, 5).forEach(expense => {
+                html += `
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div>
+                            <small><strong>${expense.category_name}</strong></small><br>
+                            <small class="text-muted">${expense.period}</small>
+                        </div>
+                        <small><strong>${expense.amount_total} лв.</strong></small>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error loading recent expenses:', error);
+        });
+}
+
+function saveDraft() {
+    // TODO: Implement draft saving
+    showAlert('Функционалността за чернови ще бъде добавена скоро', 'info');
+}
+
+function showNoCategoriesMessage() {
+    const existingMessage = document.getElementById('noCategoriesMessage');
+    if (existingMessage) return;
+    
+    const categoryDiv = document.getElementById('category_id').closest('.mb-3');
+    const message = document.createElement('div');
+    message.id = 'noCategoriesMessage';
+    message.className = 'alert alert-warning mt-2';
+    message.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <strong>Няма категории за разходи</strong><br>
+        Преди да създавате разходи, трябва да създадете поне една категория.
+        <br>
+        <a href="{{ url_for('finance.categories_new') }}" class="btn btn-sm btn-warning mt-2">
+            <i class="fas fa-plus me-1"></i>Създай категория
+        </a>
+    `;
+    categoryDiv.appendChild(message);
+}
+
+function hideNoCategoriesMessage() {
+    const message = document.getElementById('noCategoriesMessage');
+    if (message) {
+        message.remove();
+    }
+}
+
+function showAlert(message, type = 'info') {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alert, container.firstChild);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadCategories();
+    loadUnits();
+});
+</script>
+{% endblock %}

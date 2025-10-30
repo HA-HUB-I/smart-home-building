@@ -1,0 +1,450 @@
+{% extends "base.html" %}
+
+{% block title %}
+{% if announcement %}Edit Announcement{% else %}New Announcement{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="fas fa-{% if announcement %}edit{% else %}plus-circle{% endif %} me-2"></i>
+                {% if announcement %}Edit Announcement{% else %}New Announcement{% endif %}
+            </h2>
+            <p class="text-muted">
+                {% if announcement %}Update announcement details and targeting{% else %}Create a new announcement for building residents{% endif %}
+            </p>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('communications.announcements') }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Back to List
+            </a>
+            {% if announcement %}
+            <a href="{{ url_for('communications.view_announcement', announcement_id=announcement.id) }}" class="btn btn-outline-info">
+                <i class="fas fa-eye me-1"></i>View
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" enctype="multipart/form-data" id="announcementForm"
+          action="{{ url_for('communications.create_announcement') if not announcement else url_for('communications.update_announcement', announcement_id=announcement.id) }}">
+        
+        <div class="row">
+            <!-- Main Content -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-file-alt me-2"></i>Announcement Content</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Building Selection -->
+                        <div class="mb-3">
+                            <label for="building_id" class="form-label">Building *</label>
+                            <select name="building_id" id="building_id" class="form-select" required>
+                                <option value="">Select building...</option>
+                                {% for building in available_buildings %}
+                                <option value="{{ building.id }}" 
+                                        {% if (announcement and announcement.building_id == building.id) or (request.args.get('building_id') == building.id|string) %}selected{% endif %}>
+                                    {{ building.name }} - {{ building.address_display }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Select which building this announcement is for</div>
+                        </div>
+
+                        <!-- Title -->
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title *</label>
+                            <input type="text" name="title" id="title" class="form-control" 
+                                   value="{{ announcement.title if announcement }}" required maxlength="200">
+                            <div class="form-text">Keep it clear and concise (max 200 characters)</div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="mb-3">
+                            <label for="body" class="form-label">Content *</label>
+                            <textarea name="body" id="body" class="form-control" rows="8" required>{{ announcement.body if announcement }}</textarea>
+                            <div class="form-text">Full announcement content. You can use basic formatting.</div>
+                        </div>
+
+                        <!-- Urgent Flag -->
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" name="is_urgent" id="is_urgent" class="form-check-input" 
+                                       {% if announcement and announcement.is_urgent %}checked{% endif %}>
+                                <label for="is_urgent" class="form-check-label">
+                                    <i class="fas fa-exclamation-triangle text-warning me-1"></i>Mark as urgent
+                                </label>
+                            </div>
+                            <div class="form-text">Urgent announcements are highlighted and get priority display</div>
+                        </div>
+
+                        <!-- Attachments -->
+                        <div class="mb-3">
+                            <label for="attachments" class="form-label">Attachments</label>
+                            <input type="file" name="attachments" id="attachments" class="form-control" multiple 
+                                   accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.gif">
+                            <div class="form-text">Upload files (PDF, DOC, images). Max 5MB per file.</div>
+                            
+                            {% if announcement and announcement.attachments %}
+                            <div class="mt-2">
+                                <h6>Current Attachments:</h6>
+                                {% for attachment in announcement.attachments %}
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <i class="fas fa-paperclip text-muted"></i>
+                                    <a href="{{ attachment.url }}" target="_blank" class="text-decoration-none">
+                                        {{ attachment.filename }}
+                                    </a>
+                                    <span class="badge bg-light text-dark">{{ attachment.size_formatted }}</span>
+                                    <button type="button" class="btn btn-sm btn-outline-danger" 
+                                            onclick="removeAttachment('{{ attachment.id }}')">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sidebar Settings -->
+            <div class="col-lg-4">
+                <!-- Visibility Settings -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-calendar me-2"></i>Visibility Period</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Visible From -->
+                        <div class="mb-3">
+                            <label for="visible_from" class="form-label">Visible From *</label>
+                            <input type="date" name="visible_from" id="visible_from" class="form-control" 
+                                   value="{{ announcement.visible_from.strftime('%Y-%m-%d') if announcement else today.strftime('%Y-%m-%d') }}" required>
+                        </div>
+
+                        <!-- Visible Until -->
+                        <div class="mb-3">
+                            <label for="visible_until" class="form-label">Visible Until</label>
+                            <input type="date" name="visible_until" id="visible_until" class="form-control"
+                                   value="{{ announcement.visible_until.strftime('%Y-%m-%d') if announcement and announcement.visible_until }}">
+                            <div class="form-text">Leave empty for no expiration</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Audience Targeting -->
+                <div class="card mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-users me-2"></i>Target Audience</h5>
+                        <div class="form-check form-switch">
+                            <input type="checkbox" id="enable_targeting" class="form-check-input">
+                            <label for="enable_targeting" class="form-check-label">Enable</label>
+                        </div>
+                    </div>
+                    <div class="card-body" id="targeting_options" style="display: none;">
+                        <!-- Entrance Targeting -->
+                        <div class="mb-3">
+                            <label class="form-label">Entrances</label>
+                            <div id="entrance_options">
+                                <!-- Will be populated based on building selection -->
+                            </div>
+                            <div class="form-text">Select specific entrances (leave empty for all)</div>
+                        </div>
+
+                        <!-- Floor Targeting -->
+                        <div class="mb-3">
+                            <label for="target_floors" class="form-label">Floors</label>
+                            <input type="text" name="target_floors" id="target_floors" class="form-control" 
+                                   placeholder="e.g., 1,2,3 or 1-5"
+                                   value="{{ announcement.audience.floors|join(',') if announcement and announcement.audience and announcement.audience.floors }}">
+                            <div class="form-text">Comma-separated floor numbers or ranges</div>
+                        </div>
+
+                        <!-- Role Targeting -->
+                        <div class="mb-3">
+                            <label class="form-label">Roles</label>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="target_roles" value="owner" id="role_owner" class="form-check-input"
+                                               {% if announcement and announcement.audience and announcement.audience.roles and 'owner' in announcement.audience.roles %}checked{% endif %}>
+                                        <label for="role_owner" class="form-check-label">Owners</label>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="target_roles" value="tenant" id="role_tenant" class="form-check-input"
+                                               {% if announcement and announcement.audience and announcement.audience.roles and 'tenant' in announcement.audience.roles %}checked{% endif %}>
+                                        <label for="role_tenant" class="form-check-label">Tenants</label>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="target_roles" value="manager" id="role_manager" class="form-check-input"
+                                               {% if announcement and announcement.audience and announcement.audience.roles and 'manager' in announcement.audience.roles %}checked{% endif %}>
+                                        <label for="role_manager" class="form-check-label">Managers</label>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="form-check">
+                                        <input type="checkbox" name="target_roles" value="occupant" id="role_occupant" class="form-check-input"
+                                               {% if announcement and announcement.audience and announcement.audience.roles and 'occupant' in announcement.audience.roles %}checked{% endif %}>
+                                        <label for="role_occupant" class="form-check-label">Occupants</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Specific Units -->
+                        <div class="mb-3">
+                            <label for="target_units" class="form-label">Specific Units</label>
+                            <input type="text" name="target_units" id="target_units" class="form-control" 
+                                   placeholder="e.g., A101,B205,C302"
+                                   value="{{ announcement.audience.units|join(',') if announcement and announcement.audience and announcement.audience.units }}">
+                            <div class="form-text">Comma-separated unit numbers (e.g., A101,B205)</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5><i class="fas fa-eye me-2"></i>Preview</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="preview_content">
+                            <p class="text-muted">Fill in the form to see a preview</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <button type="submit" name="action" value="save" class="btn btn-primary">
+                            <i class="fas fa-save me-1"></i>
+                            {% if announcement %}Update{% else %}Create{% endif %} Announcement
+                        </button>
+                        <button type="submit" name="action" value="save_draft" class="btn btn-outline-secondary">
+                            <i class="fas fa-file-alt me-1"></i>Save as Draft
+                        </button>
+                    </div>
+                    <div>
+                        {% if announcement %}
+                        <button type="button" class="btn btn-outline-danger" 
+                                onclick="confirmDelete('{{ announcement.id }}', '{{ announcement.title }}')">
+                            <i class="fas fa-trash me-1"></i>Delete
+                        </button>
+                        {% endif %}
+                        <a href="{{ url_for('communications.announcements') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Delete Confirmation Modal -->
+{% if announcement %}
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this announcement?</p>
+                <p class="fw-bold">{{ announcement.title }}</p>
+                <p class="text-muted">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="POST" action="{{ url_for('communications.delete_announcement', announcement_id=announcement.id) }}" class="d-inline">
+                    <input type="hidden" name="_method" value="DELETE">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash me-1"></i>Delete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<!-- Pass server data to JavaScript -->
+<script>
+window.serverData = {
+    hasAnnouncement: {{ 'true' if announcement else 'false' }},
+    existingEntrances: {% if announcement and announcement.audience and announcement.audience.entrances %}'{{ announcement.audience.entrances|join(",") }}'{% else %}''{% endif %},
+    hasTargeting: {{ 'true' if (announcement and announcement.audience and (announcement.audience.entrances or announcement.audience.floors or announcement.audience.roles or announcement.audience.units)) else 'false' }}
+};
+</script>
+
+<script>
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    const buildingSelect = document.getElementById('building_id');
+    const targetingToggle = document.getElementById('enable_targeting');
+    const targetingOptions = document.getElementById('targeting_options');
+    
+    // Load entrance options when building changes
+    buildingSelect.addEventListener('change', loadEntranceOptions);
+    
+    // Toggle targeting options
+    targetingToggle.addEventListener('change', function() {
+        targetingOptions.style.display = this.checked ? 'block' : 'none';
+    });
+    
+    // Enable targeting if existing data
+    if (window.serverData.hasTargeting === 'true') {
+        targetingToggle.checked = true;
+        targetingOptions.style.display = 'block';
+    }
+    
+    // Load entrances on page load if building is selected
+    if (buildingSelect.value) {
+        loadEntranceOptions();
+    }
+    
+    // Update preview as user types
+    ['title', 'body', 'is_urgent'].forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.addEventListener('input', updatePreview);
+            element.addEventListener('change', updatePreview);
+        }
+    });
+    
+    updatePreview();
+});
+
+function loadEntranceOptions() {
+    const buildingId = document.getElementById('building_id').value;
+    const entranceContainer = document.getElementById('entrance_options');
+    
+    if (!buildingId) {
+        entranceContainer.innerHTML = '';
+        return;
+    }
+    
+    // Fetch building entrances via API
+    fetch(`/communications/api/buildings/${buildingId}/entrances`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.entrances && data.entrances.length > 0) {
+                let html = '';
+                data.entrances.forEach(entrance => {
+                    const checked = window.serverData.existingEntrances.includes(entrance);
+                    html += `
+                        <div class="form-check form-check-inline">
+                            <input type="checkbox" name="target_entrances" value="${entrance}" 
+                                   id="entrance_${entrance}" class="form-check-input" ${checked ? 'checked' : ''}>
+                            <label for="entrance_${entrance}" class="form-check-label">Entrance ${entrance}</label>
+                        </div>
+                    `;
+                });
+                entranceContainer.innerHTML = html;
+            } else {
+                entranceContainer.innerHTML = '<p class="text-muted">No entrances available</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error loading entrances:', error);
+            entranceContainer.innerHTML = '<p class="text-danger">Error loading entrances</p>';
+        });
+}
+
+function updatePreview() {
+    const title = document.getElementById('title').value;
+    const body = document.getElementById('body').value;
+    const isUrgent = document.getElementById('is_urgent').checked;
+    const building = document.getElementById('building_id').selectedOptions[0]?.text;
+    
+    let html = '';
+    if (title || body) {
+        html += '<div class="border p-3 rounded">';
+        
+        if (isUrgent) {
+            html += '<span class="badge bg-danger mb-2"><i class="fas fa-exclamation-triangle me-1"></i>URGENT</span><br>';
+        }
+        
+        if (title) {
+            html += `<h6>${title}</h6>`;
+        }
+        
+        if (body) {
+            html += `<p class="mb-2">${body.substring(0, 200)}${body.length > 200 ? '...' : ''}</p>`;
+        }
+        
+        if (building && building !== 'Select building...') {
+            html += `<small class="text-muted"><i class="fas fa-building me-1"></i>${building}</small>`;
+        }
+        
+        html += '</div>';
+    } else {
+        html = '<p class="text-muted">Fill in the form to see a preview</p>';
+    }
+    
+    document.getElementById('preview_content').innerHTML = html;
+}
+
+function confirmDelete(announcementId, title) {
+    const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    modal.show();
+}
+
+function removeAttachment(attachmentId) {
+    if (confirm('Remove this attachment?')) {
+        fetch(`/communications/api/attachments/${attachmentId}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload(); // Simple reload to update the attachment list
+            } else {
+                alert('Error removing attachment: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error removing attachment');
+        });
+    }
+}
+
+// Form validation
+document.getElementById('announcementForm').addEventListener('submit', function(e) {
+    const building = document.getElementById('building_id').value;
+    const title = document.getElementById('title').value;
+    const body = document.getElementById('body').value;
+    
+    if (!building || !title.trim() || !body.trim()) {
+        e.preventDefault();
+        alert('Please fill in all required fields');
+        return false;
+    }
+    
+    return true;
+});
+</script>
+{% endblock %}

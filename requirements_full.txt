@@ -1,0 +1,278 @@
+# WebPortal Production Requirements
+# ===================================
+# Core Flask framework and extensions
+
+Flask==3.0.0
+Werkzeug==3.0.1
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+itsdangerous==2.1.2
+click==8.1.7
+
+# Environment and Configuration
+python-dotenv==1.0.0
+
+# Database connectivity
+PyMySQL==1.1.0
+cryptography==41.0.8
+
+# PostgreSQL support (for future migration)
+# psycopg2-binary==2.9.9  # Uncomment when ready for PostgreSQL
+
+# HTTP requests and API clients
+requests==2.31.0
+urllib3==2.1.0
+certifi==2023.11.17
+charset-normalizer==3.3.2
+idna==3.6
+
+# Caching and session storage
+redis==5.0.1
+
+# Rate limiting and security
+Flask-Limiter==3.5.0
+limits==3.6.0
+
+# CORS support
+Flask-CORS==4.0.0
+
+# Image processing (for camera snapshots)
+Pillow==10.1.0
+
+# Date and time handling
+python-dateutil==2.8.2
+
+# JSON handling and data validation
+jsonschema==4.20.0
+
+# Logging and monitoring
+structlog==23.2.0
+
+# Development and testing dependencies
+# (Only install in development environment)
+# pytest==7.4.3
+# pytest-flask==1.3.0
+# black==23.11.0
+# flake8==6.1.0
+
+# Production WSGI server
+gunicorn==21.2.0
+
+# System monitoring
+psutil==5.9.6
+
+# Backup and file operations
+zipfile36==0.1.3
+
+# Home Assistant integration
+websocket-client==1.6.4
+aiohttp==3.9.1
+
+# Security and encryption
+bcrypt==4.1.2
+passlib==1.7.4
+
+# Configuration validation
+cerberus==1.3.5
+
+# Email support (for notifications)
+email-validator==2.1.0.post1
+
+# Calendar and scheduling
+APScheduler==3.10.4
+
+# File monitoring
+watchdog==3.0.0
+
+# Environment detection
+distro==1.8.0
+
+# Performance monitoring
+py-spy==0.3.14
+
+# Memory profiling (development only)
+# memory-profiler==0.61.0
+
+# Network utilities
+netifaces==0.11.0
+
+# Async support
+asyncio==3.4.3
+aiofiles==23.2.1
+
+# Data serialization
+msgpack==1.0.7
+
+# Configuration management
+configparser==6.0.0
+
+# Timezone handling
+pytz==2023.3.post1
+
+# String processing
+Unidecode==1.3.7
+
+# Markdown processing (for documentation)
+Markdown==3.5.1
+
+# QR code generation (for setup)
+qrcode==7.4.2
+
+# Color output for CLI tools
+colorama==0.4.6
+
+# Progress bars for CLI operations
+tqdm==4.66.1
+
+# SSH client (for remote deployment)
+paramiko==3.4.0
+
+# File locking
+filelock==3.13.1
+
+# Process management
+supervisor==4.2.5
+
+# System service integration
+systemd-python==235
+
+# Network scanning
+python-nmap==0.7.1
+
+# Hardware information
+py-cpuinfo==9.0.0
+
+# Git integration
+GitPython==3.1.40
+
+# Template engine enhancements
+Mako==1.3.0
+
+# Internationalization
+Babel==2.13.1
+Flask-Babel==4.0.0
+
+# API documentation
+flask-restx==1.3.0
+
+# WebSocket support
+Flask-SocketIO==5.3.6
+python-socketio==5.10.0
+
+# Session management
+Flask-Session==0.5.0
+
+# CSRF protection
+Flask-WTF==1.2.1
+WTForms==3.1.1
+
+# File uploads
+Flask-Uploads==0.2.1
+
+# Pagination
+Flask-SQLAlchemy==3.1.1
+SQLAlchemy==2.0.23
+
+# Migration support
+Flask-Migrate==4.0.5
+Alembic==1.13.1
+
+# Cache backends
+Flask-Caching==2.1.0
+
+# Mail sending
+Flask-Mail==0.9.1
+
+# Admin interface
+Flask-Admin==1.6.1
+
+# User authentication
+Flask-Login==0.6.3
+Flask-Principal==0.4.0
+
+# OAuth support
+Authlib==1.2.1
+
+# JWT tokens
+PyJWT==2.8.0
+
+# Password hashing
+argon2-cffi==23.1.0
+
+# Two-factor authentication
+pyotp==2.9.0
+
+# Captcha support
+Flask-Captcha==1.0.0
+
+# Notifications
+plyer==2.1.0
+
+# Push notifications (if Web Push is re-enabled)
+# pywebpush==1.14.0
+
+# SMS notifications (optional)
+# twilio==8.11.0
+
+# Voice notifications (optional)
+# pyttsx3==2.90
+
+# Weather data
+# pyowm==3.3.0
+
+# IoT device communication
+# paho-mqtt==1.6.1
+
+# Blockchain integration (future)
+# web3==6.12.0
+
+# Machine learning (future features)
+# scikit-learn==1.3.2
+# numpy==1.25.2
+# pandas==2.1.4
+
+# Computer vision (camera analysis)
+# opencv-python==4.8.1.78
+
+# Audio processing
+# pydub==0.25.1
+
+# Natural language processing
+# nltk==3.8.1
+# spacy==3.7.2
+
+# Data visualization
+# plotly==5.17.0
+# matplotlib==3.8.2
+
+# Geolocation services
+geopy==2.4.1
+folium==0.15.1
+
+# Backup and synchronization
+# rclone-python==0.1.4
+
+# Container support
+# docker==6.1.3
+
+# Kubernetes client
+# kubernetes==28.1.0
+
+# Service discovery
+# consul==1.1.0
+
+# Message queuing
+# celery==5.3.4
+# kombu==5.3.4
+
+# Event streaming
+# kafka-python==2.0.2
+
+# Time series database
+# influxdb==5.3.1
+
+# Metrics collection
+# prometheus-client==0.19.0
+
+# Distributed tracing
+# opentelemetry-api==1.21.0

@@ -1,0 +1,432 @@
+{% extends "base.html" %}
+
+{% block title %}Plugins Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-puzzle-piece me-2"></i>Plugins Management</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('extensions.index') }}">Extensions</a></li>
+                            <li class="breadcrumb-item active">Plugins</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary me-2" onclick="scanPlugins()">
+                        <i class="fas fa-search me-1"></i>Scan for Plugins
+                    </button>
+                    <button class="btn btn-primary" onclick="showInstallPluginModal()">
+                        <i class="fas fa-download me-1"></i>Install Plugin
+                    </button>
+                </div>
+            </div>
+
+            <!-- Plugin Categories -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-tags me-2"></i>Plugin Categories</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="pluginCategory" id="allPlugins" value="all" checked>
+                                <label class="btn btn-outline-primary" for="allPlugins">All Plugins</label>
+                                
+                                <input type="radio" class="btn-check" name="pluginCategory" id="activePlugins" value="active">
+                                <label class="btn btn-outline-success" for="activePlugins">Active</label>
+                                
+                                <input type="radio" class="btn-check" name="pluginCategory" id="inactivePlugins" value="inactive">
+                                <label class="btn btn-outline-secondary" for="inactivePlugins">Inactive</label>
+                                
+                                <input type="radio" class="btn-check" name="pluginCategory" id="integrationPlugins" value="integration">
+                                <label class="btn btn-outline-info" for="integrationPlugins">Integrations</label>
+                                
+                                <input type="radio" class="btn-check" name="pluginCategory" id="uiPlugins" value="ui">
+                                <label class="btn btn-outline-warning" for="uiPlugins">UI Extensions</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Installed Plugins -->
+            <div class="row">
+                <div class="col-12">
+                    <h4><i class="fas fa-list me-2"></i>Installed Plugins</h4>
+                </div>
+            </div>
+
+            <div class="row" id="pluginsList">
+                <!-- Sample plugins -->
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card plugin-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-home text-primary me-2"></i>
+                                <h6 class="mb-0">Home Assistant Pro</h6>
+                            </div>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">Advanced Home Assistant integration with custom automations and device management.</p>
+                            <div class="mb-2">
+                                <small class="text-muted">Version:</small> <strong>2.1.0</strong>
+                            </div>
+                            <div class="mb-2">
+                                <small class="text-muted">Author:</small> <strong>WebPortal Team</strong>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Category:</small>
+                                <span class="badge bg-info">Integration</span>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-primary" onclick="configurePlugin('home_assistant_pro')">
+                                <i class="fas fa-cog me-1"></i>Configure
+                            </button>
+                            <button class="btn btn-sm btn-warning" onclick="togglePlugin('home_assistant_pro')">
+                                <i class="fas fa-pause me-1"></i>Disable
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card plugin-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-chart-line text-success me-2"></i>
+                                <h6 class="mb-0">Advanced Analytics</h6>
+                            </div>
+                            <span class="badge bg-success">Active</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">Detailed analytics and reporting for building management with custom dashboards.</p>
+                            <div class="mb-2">
+                                <small class="text-muted">Version:</small> <strong>1.5.2</strong>
+                            </div>
+                            <div class="mb-2">
+                                <small class="text-muted">Author:</small> <strong>Analytics Corp</strong>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Category:</small>
+                                <span class="badge bg-warning">UI Extension</span>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-primary" onclick="configurePlugin('advanced_analytics')">
+                                <i class="fas fa-cog me-1"></i>Configure
+                            </button>
+                            <button class="btn btn-sm btn-warning" onclick="togglePlugin('advanced_analytics')">
+                                <i class="fas fa-pause me-1"></i>Disable
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card plugin-card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-mobile-alt text-info me-2"></i>
+                                <h6 class="mb-0">Mobile Push Pro</h6>
+                            </div>
+                            <span class="badge bg-secondary">Inactive</span>
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text">Enhanced mobile push notifications with custom templates and scheduling.</p>
+                            <div class="mb-2">
+                                <small class="text-muted">Version:</small> <strong>1.2.1</strong>
+                            </div>
+                            <div class="mb-2">
+                                <small class="text-muted">Author:</small> <strong>Notification Systems Ltd</strong>
+                            </div>
+                            <div class="mb-3">
+                                <small class="text-muted">Category:</small>
+                                <span class="badge bg-info">Integration</span>
+                            </div>
+                        </div>
+                        <div class="card-footer d-flex justify-content-between">
+                            <button class="btn btn-sm btn-outline-primary" onclick="configurePlugin('mobile_push_pro')">
+                                <i class="fas fa-cog me-1"></i>Configure
+                            </button>
+                            <button class="btn btn-sm btn-success" onclick="togglePlugin('mobile_push_pro')">
+                                <i class="fas fa-play me-1"></i>Enable
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Plugin Marketplace (Coming Soon) -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0"><i class="fas fa-store me-2"></i>Plugin Marketplace (Coming Soon)</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>The WebPortal Plugin Marketplace will allow you to browse and install third-party plugins from the community.</p>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>Featured Categories:</h6>
+                                    <ul>
+                                        <li>Smart Home Integrations</li>
+                                        <li>Payment Processors</li>
+                                        <li>Notification Services</li>
+                                        <li>Reporting Tools</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Features:</h6>
+                                    <ul>
+                                        <li>One-click installation</li>
+                                        <li>Automatic updates</li>
+                                        <li>Security scanning</li>
+                                        <li>Rating system</li>
+                                    </ul>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Developer Tools:</h6>
+                                    <ul>
+                                        <li>Plugin SDK</li>
+                                        <li>Testing environment</li>
+                                        <li>Documentation</li>
+                                        <li>Revenue sharing</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Install Plugin Modal -->
+<div class="modal fade" id="installPluginModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Install Plugin</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="pluginMethod" class="form-label">Installation Method</label>
+                    <select class="form-select" id="pluginMethod" onchange="toggleInstallMethod()">
+                        <option value="">Select method...</option>
+                        <option value="upload">Upload Plugin File</option>
+                        <option value="url">Install from URL</option>
+                        <option value="marketplace">Browse Marketplace</option>
+                    </select>
+                </div>
+
+                <div id="uploadMethod" style="display: none;">
+                    <div class="mb-3">
+                        <label for="pluginFile" class="form-label">Plugin File (.zip)</label>
+                        <input class="form-control" type="file" id="pluginFile" accept=".zip">
+                        <div class="form-text">Upload a valid WebPortal plugin package</div>
+                    </div>
+                </div>
+
+                <div id="urlMethod" style="display: none;">
+                    <div class="mb-3">
+                        <label for="pluginUrl" class="form-label">Plugin URL</label>
+                        <input type="url" class="form-control" id="pluginUrl" placeholder="https://example.com/plugin.zip">
+                        <div class="form-text">Direct download URL for plugin package</div>
+                    </div>
+                </div>
+
+                <div id="marketplaceMethod" style="display: none;">
+                    <div class="text-center py-4">
+                        <i class="fas fa-store fa-3x text-muted mb-3"></i>
+                        <h6 class="text-muted">Marketplace Coming Soon</h6>
+                        <p class="text-muted">The plugin marketplace is currently under development.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="installPlugin()" id="installBtn" disabled>
+                    <i class="fas fa-download me-1"></i>Install Plugin
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Plugin Configuration Modal -->
+<div class="modal fade" id="configurePluginModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="configurePluginTitle">Configure Plugin</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="configurePluginContent">
+                <!-- Plugin configuration will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="savePluginConfig()">
+                    <i class="fas fa-save me-1"></i>Save Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.plugin-card {
+    transition: transform 0.2s;
+    border: 1px solid #e9ecef;
+}
+
+.plugin-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showInstallPluginModal() {
+    new bootstrap.Modal(document.getElementById('installPluginModal')).show();
+}
+
+function toggleInstallMethod() {
+    const method = document.getElementById('pluginMethod').value;
+    const installBtn = document.getElementById('installBtn');
+    
+    // Hide all methods
+    document.getElementById('uploadMethod').style.display = 'none';
+    document.getElementById('urlMethod').style.display = 'none';
+    document.getElementById('marketplaceMethod').style.display = 'none';
+    
+    // Show selected method
+    if (method === 'upload') {
+        document.getElementById('uploadMethod').style.display = 'block';
+        installBtn.disabled = false;
+    } else if (method === 'url') {
+        document.getElementById('urlMethod').style.display = 'block';
+        installBtn.disabled = false;
+    } else if (method === 'marketplace') {
+        document.getElementById('marketplaceMethod').style.display = 'block';
+        installBtn.disabled = true;
+    } else {
+        installBtn.disabled = true;
+    }
+}
+
+function installPlugin() {
+    const method = document.getElementById('pluginMethod').value;
+    
+    if (method === 'upload') {
+        const fileInput = document.getElementById('pluginFile');
+        if (!fileInput.files[0]) {
+            showAlert('Please select a plugin file', 'warning');
+            return;
+        }
+        showAlert('Plugin upload not implemented yet', 'info');
+    } else if (method === 'url') {
+        const url = document.getElementById('pluginUrl').value;
+        if (!url) {
+            showAlert('Please enter a plugin URL', 'warning');
+            return;
+        }
+        showAlert('Plugin installation from URL not implemented yet', 'info');
+    }
+}
+
+function configurePlugin(pluginId) {
+    document.getElementById('configurePluginTitle').textContent = 'Configure ' + pluginId.replace('_', ' ').toUpperCase();
+    
+    // Sample configuration content
+    document.getElementById('configurePluginContent').innerHTML = `
+        <div class="alert alert-info">
+            <i class="fas fa-info-circle me-2"></i>
+            Plugin configuration interface is currently under development.
+        </div>
+        <form>
+            <div class="mb-3">
+                <label class="form-label">API Key</label>
+                <input type="password" class="form-control" placeholder="Enter API key">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Server URL</label>
+                <input type="url" class="form-control" placeholder="https://api.example.com">
+            </div>
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="enableLogging">
+                    <label class="form-check-label" for="enableLogging">
+                        Enable Debug Logging
+                    </label>
+                </div>
+            </div>
+        </form>
+    `;
+    
+    new bootstrap.Modal(document.getElementById('configurePluginModal')).show();
+}
+
+function togglePlugin(pluginId) {
+    showAlert('Plugin toggle not implemented yet', 'info');
+}
+
+function savePluginConfig() {
+    showAlert('Plugin configuration save not implemented yet', 'info');
+    bootstrap.Modal.getInstance(document.getElementById('configurePluginModal')).hide();
+}
+
+function scanPlugins() {
+    showAlert('Scanning for plugins...', 'info');
+    
+    setTimeout(() => {
+        showAlert('Plugin scan completed. No new plugins found.', 'success');
+    }, 2000);
+}
+
+// Filter plugins by category
+document.querySelectorAll('input[name="pluginCategory"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        filterPlugins(this.value);
+    });
+});
+
+function filterPlugins(category) {
+    // This would filter the displayed plugins based on category
+    // Currently just shows an alert as it's a demo
+    if (category !== 'all') {
+        showAlert(`Filtering by category: ${category}`, 'info');
+    }
+}
+
+function showAlert(message, type = 'info') {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alert, container.firstChild);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

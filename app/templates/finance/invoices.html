@@ -1,0 +1,394 @@
+{% extends "base.html" %}
+
+{% block title %}Invoices{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('finance.index') }}">Finance</a></li>
+                    <li class="breadcrumb-item active">Invoices</li>
+                </ol>
+            </nav>
+            <h2><i class="fas fa-file-invoice me-2"></i>Invoices</h2>
+            <p class="text-muted">Manage unit invoices and payment tracking</p>
+        </div>
+        <div class="btn-group">
+            <a href="{{ url_for('finance.new_payment') }}" class="btn btn-success">
+                <i class="fas fa-money-check me-1"></i>Record Payment
+            </a>
+            <button class="btn btn-outline-primary" onclick="bulkActions()">
+                <i class="fas fa-tasks me-1"></i>Bulk Actions
+            </button>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5><i class="fas fa-filter me-2"></i>Filters</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Building</label>
+                    <select name="building_id" class="form-select" onchange="updateUnits(); this.form.submit()">
+                        <option value="">All Buildings</option>
+                        {% for building in buildings %}
+                        <option value="{{ building.id }}" 
+                                {% if building.id == filters.building_id %}selected{% endif %}>
+                            {{ building.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Unit</label>
+                    <select name="unit_id" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Units</option>
+                        <!-- Units will be populated by JavaScript -->
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        {% for status in invoice_statuses %}
+                        <option value="{{ status.value }}" 
+                                {% if status.value == filters.status %}selected{% endif %}>
+                            {{ status.value|title }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Year</label>
+                    <select name="year" class="form-select" onchange="this.form.submit()">
+                        {% for year in range(2020, 2030) %}
+                        <option value="{{ year }}" {% if year == filters.year %}selected{% endif %}>
+                            {{ year }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Month</label>
+                    <select name="month" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Months</option>
+                        {% for month, name in [(1,'January'),(2,'February'),(3,'March'),(4,'April'),(5,'May'),(6,'June'),(7,'July'),(8,'August'),(9,'September'),(10,'October'),(11,'November'),(12,'December')] %}
+                        <option value="{{ month }}" {% if month == filters.month %}selected{% endif %}>
+                            {{ name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Status Summary -->
+    {% if invoices %}
+    <div class="row mb-4">
+        {% set status_counts = {} %}
+        {% for invoice in invoices %}
+            {% set _ = status_counts.update({invoice.status.value: status_counts.get(invoice.status.value, 0) + 1}) %}
+        {% endfor %}
+        
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body text-center">
+                    <h4>{{ status_counts.get('paid', 0) }}</h4>
+                    <h6>Paid</h6>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <h4>{{ status_counts.get('unpaid', 0) }}</h4>
+                    <h6>Unpaid</h6>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-danger">
+                <div class="card-body text-center">
+                    <h4>{{ status_counts.get('overdue', 0) }}</h4>
+                    <h6>Overdue</h6>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <h4>{{ status_counts.get('partial', 0) }}</h4>
+                    <h6>Partial</h6>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Invoices List -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5>
+                <i class="fas fa-list me-2"></i>
+                Invoices
+                {% if invoices %}
+                <span class="badge bg-secondary">{{ invoices|length }}</span>
+                {% endif %}
+            </h5>
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-1"></i>Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-csv me-2"></i>CSV</a></li>
+                    <li><a class="dropdown-item" href="#"><i class="fas fa-file-pdf me-2"></i>PDF Report</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="card-body">
+            {% if invoices %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th>
+                                    <input type="checkbox" id="selectAll" onchange="toggleAll(this)">
+                                </th>
+                                <th>Invoice #</th>
+                                <th>Unit</th>
+                                <th>Period</th>
+                                <th>Due Date</th>
+                                <th class="text-end">Amount</th>
+                                <th class="text-end">Paid</th>
+                                <th class="text-end">Balance</th>
+                                <th class="text-center">Status</th>
+                                <th class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for invoice in invoices %}
+                            <tr class="{% if invoice.status.value == 'overdue' %}table-danger{% elif invoice.status.value == 'paid' %}table-success{% endif %}">
+                                <td>
+                                    <input type="checkbox" class="invoice-checkbox" value="{{ invoice.id }}">
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('finance.view_invoice', invoice_id=invoice.id) }}" class="text-decoration-none fw-bold">
+                                        #{{ invoice.id }}
+                                    </a>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('buildings.view_unit', building_id=invoice.unit.building_id, unit_id=invoice.unit_id) }}" class="text-decoration-none">
+                                        {{ invoice.unit.full_number }}
+                                    </a>
+                                    <br>
+                                    <small class="text-muted">{{ invoice.unit.building.name }}</small>
+                                </td>
+                                <td>
+                                    <strong>{{ invoice.period.strftime('%Y-%m') }}</strong>
+                                </td>
+                                <td>
+                                    {{ invoice.due_date.strftime('%d.%m.%Y') }}
+                                    {% if invoice.status.value == 'overdue' %}
+                                        <br>
+                                        <small class="text-danger">
+                                            {{ (moment().date() - invoice.due_date).days }} days overdue
+                                        </small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <strong>{{ "%.2f"|format(invoice.amount_due) }} лв.</strong>
+                                </td>
+                                <td class="text-end">
+                                    {% set paid_amount = invoice.payments|sum(attribute='amount') %}
+                                    {% if paid_amount > 0 %}
+                                        <span class="text-success">{{ "%.2f"|format(paid_amount) }} лв.</span>
+                                    {% else %}
+                                        <span class="text-muted">0.00 лв.</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% set balance = invoice.amount_due - paid_amount %}
+                                    {% if balance > 0 %}
+                                        <strong class="text-danger">{{ "%.2f"|format(balance) }} лв.</strong>
+                                    {% else %}
+                                        <span class="text-success">0.00 лв.</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if invoice.status.value == 'paid' %}
+                                        <span class="badge bg-success">Paid</span>
+                                    {% elif invoice.status.value == 'partial' %}
+                                        <span class="badge bg-info">Partial</span>
+                                    {% elif invoice.status.value == 'overdue' %}
+                                        <span class="badge bg-danger">Overdue</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">Unpaid</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{{ url_for('finance.view_invoice', invoice_id=invoice.id) }}" 
+                                           class="btn btn-outline-primary" 
+                                           data-bs-toggle="tooltip" 
+                                           title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        {% if invoice.status.value != 'paid' %}
+                                        <a href="{{ url_for('finance.new_payment', invoice_id=invoice.id) }}" 
+                                           class="btn btn-outline-success"
+                                           data-bs-toggle="tooltip" 
+                                           title="Record Payment">
+                                            <i class="fas fa-money-check"></i>
+                                        </a>
+                                        {% endif %}
+                                        <button class="btn btn-outline-secondary" 
+                                                onclick="printInvoice({{ invoice.id }})"
+                                                data-bs-toggle="tooltip" 
+                                                title="Print">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Summary Statistics -->
+                <div class="row mt-4">
+                    {% set total_amount = invoices|sum(attribute='amount_due') %}
+                    {% set total_paid = invoices|sum(attribute='payments')|sum(attribute='amount') if invoices else 0 %}
+                    {% set total_balance = total_amount - total_paid %}
+
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="text-primary">Total Amount</h5>
+                                <h3 class="text-primary">{{ "%.2f"|format(total_amount) }} лв.</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="text-success">Total Paid</h5>
+                                <h3 class="text-success">{{ "%.2f"|format(total_paid) }} лв.</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h5 class="text-danger">Outstanding</h5>
+                                <h3 class="text-danger">{{ "%.2f"|format(total_balance) }} лв.</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-file-invoice fa-3x text-muted mb-3"></i>
+                    <h4>No Invoices Found</h4>
+                    <p class="text-muted">No invoices match your current filters.</p>
+                    <div class="mt-3">
+                        <a href="{{ url_for('finance.expenses') }}" class="btn btn-primary">
+                            <i class="fas fa-receipt me-1"></i>Manage Expenses
+                        </a>
+                        <a href="{{ url_for('finance.invoices') }}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times me-1"></i>Clear Filters
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Toggle all checkboxes
+function toggleAll(checkbox) {
+    const invoiceCheckboxes = document.querySelectorAll('.invoice-checkbox');
+    invoiceCheckboxes.forEach(cb => cb.checked = checkbox.checked);
+}
+
+// Update units dropdown based on selected building
+function updateUnits() {
+    const buildingId = document.querySelector('select[name="building_id"]').value;
+    const unitSelect = document.querySelector('select[name="unit_id"]');
+    
+    if (!buildingId) {
+        unitSelect.innerHTML = '<option value="">All Units</option>';
+        return;
+    }
+    
+    fetch(`/finance/api/units/${buildingId}`)
+        .then(response => response.json())
+        .then(units => {
+            unitSelect.innerHTML = '<option value="">All Units</option>';
+            units.forEach(unit => {
+                unitSelect.innerHTML += `<option value="${unit.id}">${unit.full_number}</option>`;
+            });
+        })
+        .catch(error => {
+            console.error('Error loading units:', error);
+        });
+}
+
+// Bulk actions for selected invoices
+function bulkActions() {
+    const selectedIds = Array.from(document.querySelectorAll('.invoice-checkbox:checked'))
+        .map(cb => cb.value);
+    
+    if (selectedIds.length === 0) {
+        alert('Please select invoices first');
+        return;
+    }
+    
+    const action = prompt(`Selected ${selectedIds.length} invoices. Choose action:\n1. Send reminder emails\n2. Mark as paid\n3. Export selected\n\nEnter number (1-3):`);
+    
+    switch(action) {
+        case '1':
+            bulkSendReminders(selectedIds);
+            break;
+        case '2':
+            bulkMarkPaid(selectedIds);
+            break;
+        case '3':
+            bulkExport(selectedIds);
+            break;
+        default:
+            alert('Invalid action');
+    }
+}
+
+// Print invoice
+function printInvoice(invoiceId) {
+    window.open(`/finance/invoices/${invoiceId}/print`, '_blank');
+}
+
+// Initialize tooltips
+document.addEventListener('DOMContentLoaded', function() {
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+    
+    // Load units if building is pre-selected
+    if (document.querySelector('select[name="building_id"]').value) {
+        updateUnits();
+    }
+});
+</script>
+{% endblock %}

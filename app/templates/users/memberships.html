@@ -1,0 +1,312 @@
+{% extends "base.html" %}
+
+{% block title %}Членства на {{ user.full_name or user.email }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="fas fa-building me-2"></i>
+                Членства на {{ user.full_name or user.email }}
+            </h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Начало</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('users.index') }}">Потребители</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('users.view_user', id=user.id) }}">{{ user.full_name or user.email }}</a></li>
+                    <li class="breadcrumb-item active">Членства</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMembershipModal">
+                <i class="fas fa-plus me-1"></i>Добави членство
+            </button>
+            <a href="{{ url_for('users.view_user', id=user.id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left me-1"></i>Назад
+            </a>
+        </div>
+    </div>
+
+    <!-- Current Memberships -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title mb-0">
+                <i class="fas fa-list me-1"></i>
+                Текущи членства 
+                <span class="badge bg-secondary">{{ memberships|length }}</span>
+            </h5>
+        </div>
+        <div class="card-body">
+            {% if memberships %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Сграда</th>
+                            <th>Обект</th>
+                            <th>Роля</th>
+                            <th>Период</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for membership in memberships %}
+                        <tr class="{% if not membership.is_active %}table-secondary{% endif %}">
+                            <td>
+                                <div>
+                                    <strong>{{ membership.unit.building.name }}</strong>
+                                </div>
+                                <div class="text-muted small">
+                                    {{ membership.unit.building.address.street }} {{ membership.unit.building.address.number }}
+                                </div>
+                            </td>
+                            <td>
+                                <div>
+                                    <strong>{{ membership.unit.full_number }}</strong>
+                                </div>
+                                <div class="text-muted small">
+                                    {{ membership.unit.area_m2 }}м²
+                                    {% if membership.unit.shares %}
+                                    | {{ "%.4f"|format(membership.unit.shares) }} дяла
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <span class="badge {% if membership.role.value == 'owner' %}bg-primary{% elif membership.role.value == 'manager' %}bg-warning{% else %}bg-info{% endif %}">
+                                    {% if membership.role.value == 'owner' %}Собственик
+                                    {% elif membership.role.value == 'tenant' %}Наемател  
+                                    {% elif membership.role.value == 'manager' %}Домоуправител
+                                    {% elif membership.role.value == 'occupant' %}Живущ
+                                    {% else %}{{ membership.role.value }}
+                                    {% endif %}
+                                </span>
+                                {% if membership.is_primary %}
+                                <span class="badge bg-success ms-1">Основен</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="small">
+                                    {% if membership.since %}
+                                    <div><strong>От:</strong> {{ membership.since.strftime('%d.%m.%Y') }}</div>
+                                    {% endif %}
+                                    {% if membership.until %}
+                                    <div><strong>До:</strong> {{ membership.until.strftime('%d.%m.%Y') }}</div>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input membership-toggle" type="checkbox" 
+                                           id="membership{{ membership.id }}"
+                                           data-membership-id="{{ membership.id }}"
+                                           {% if membership.is_active %}checked{% endif %}>
+                                    <label class="form-check-label" for="membership{{ membership.id }}">
+                                        {% if membership.is_active %}
+                                        <span class="text-success">Активно</span>
+                                        {% else %}
+                                        <span class="text-muted">Неактивно</span>
+                                        {% endif %}
+                                    </label>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('buildings.view_building', id=membership.unit.building.id) }}" 
+                                       class="btn btn-outline-primary" title="Виж сграда">
+                                        <i class="fas fa-building"></i>
+                                    </a>
+                                    <a href="{{ url_for('buildings.view_unit', building_id=membership.unit.building.id, unit_id=membership.unit.id) }}" 
+                                       class="btn btn-outline-info" title="Виж обект">
+                                        <i class="fas fa-home"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-building fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Няма членства</h5>
+                <p class="text-muted">Потребителят не е назначен към никой обект.</p>
+                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addMembershipModal">
+                    <i class="fas fa-plus me-1"></i>Добави първо членство
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Add Membership Modal -->
+<div class="modal fade" id="addMembershipModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Добави членство</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('users.add_membership', user_id=user.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="buildingSelect" class="form-label">Сграда</label>
+                        <select class="form-select" id="buildingSelect" name="building_id" required>
+                            <option value="">Изберете сграда...</option>
+                            {% for building in available_buildings %}
+                            <option value="{{ building.id }}">{{ building.name }} - {{ building.address.street }} {{ building.address.number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="unitSelect" class="form-label">Обект</label>
+                        <select class="form-select" id="unitSelect" name="unit_id" required disabled>
+                            <option value="">Първо изберете сграда...</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="roleSelect" class="form-label">Роля</label>
+                        <select class="form-select" id="roleSelect" name="role" required>
+                            <option value="">Изберете роля...</option>
+                            <option value="owner">Собственик</option>
+                            <option value="tenant">Наемател</option>
+                            <option value="occupant">Живущ</option>
+                            <option value="manager">Домоуправител</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="isPrimary" name="is_primary">
+                            <label class="form-check-label" for="isPrimary">
+                                Основно членство
+                            </label>
+                        </div>
+                        <div class="form-text">Основното членство се използва за нотификации и приоритет.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отказ</button>
+                    <button type="submit" class="btn btn-primary">Добави</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Load units for selected building
+function loadUnits() {
+    const buildingId = document.getElementById('buildingSelect').value;
+    const unitSelect = document.getElementById('unitSelect');
+    
+    if (!buildingId) {
+        unitSelect.disabled = true;
+        unitSelect.innerHTML = '<option value="">Първо изберете сграда...</option>';
+        return;
+    }
+    
+    unitSelect.disabled = true;
+    unitSelect.innerHTML = '<option value="">Зареждане...</option>';
+    
+    fetch(`{{ url_for('users.api_building_units', building_id=0) }}`.replace('0', buildingId))
+        .then(response => response.json())
+        .then(data => {
+            unitSelect.innerHTML = '<option value="">Изберете обект...</option>';
+            data.forEach(unit => {
+                const option = document.createElement('option');
+                option.value = unit.id;
+                option.textContent = `${unit.full_number} (${unit.has_active_membership ? 'Зает' : 'Свободен'})`;
+                if (unit.has_active_membership) {
+                    option.classList.add('text-warning');
+                }
+                unitSelect.appendChild(option);
+            });
+            unitSelect.disabled = false;
+        })
+        .catch(error => {
+            console.error('Error loading units:', error);
+            unitSelect.innerHTML = '<option value="">Грешка при зареждане</option>';
+        });
+}
+
+// Add event listeners for membership toggles and building select
+document.addEventListener('DOMContentLoaded', function() {
+    // Building select change handler
+    document.getElementById('buildingSelect').addEventListener('change', loadUnits);
+    
+    // Membership toggle handlers
+    document.querySelectorAll('.membership-toggle').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            const membershipId = this.dataset.membershipId;
+            const isActive = this.checked;
+            
+            fetch(`{{ url_for('users.toggle_membership', id=0) }}`.replace('0', membershipId), {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({active: isActive})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // Update UI
+                    const label = document.querySelector(`label[for="membership${membershipId}"]`);
+                    const span = label.querySelector('span');
+                    if (data.is_active) {
+                        span.textContent = 'Активно';
+                        span.className = 'text-success';
+                    } else {
+                        span.textContent = 'Неактивно';
+                        span.className = 'text-muted';
+                    }
+                    
+                    // Show message
+                    showAlert(data.message, 'success');
+                } else {
+                    showAlert(data.error || 'Грешка при промяна на статуса', 'danger');
+                    // Revert checkbox
+                    this.checked = !isActive;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showAlert('Грешка при комуникация със сървъра', 'danger');
+                // Revert checkbox
+                this.checked = !isActive;
+            });
+        });
+    });
+});
+
+// Show alert message
+function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+    
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

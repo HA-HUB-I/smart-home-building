@@ -1,0 +1,290 @@
+{% extends "base.html" %}
+
+{% block title %}{{ unit.full_number }} - {{ unit.building.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2>
+                <i class="fas fa-home me-2"></i>
+                Обект {{ unit.full_number }}
+                {% if not unit.is_active %}
+                <span class="badge bg-danger ms-2">Неактивен</span>
+                {% endif %}
+            </h2>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.index') }}">Начало</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('buildings.index') }}">Сгради</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('buildings.view_building', id=unit.building_id) }}">{{ unit.building.name }}</a></li>
+                    <li class="breadcrumb-item active">Обект {{ unit.full_number }}</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            {% if current_user.is_superuser or current_user.global_role.value in ['superadmin', 'staff'] %}
+            <a href="{{ url_for('admin.index') }}" class="btn btn-outline-info">
+                <i class="fas fa-cog"></i> Администрация
+            </a>
+            {% endif %}
+            <a href="{{ url_for('buildings.view_building', id=unit.building_id) }}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Назад към сградата
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Unit Information -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-1"></i>
+                        Информация за обекта
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-borderless">
+                        <tr>
+                            <td><strong>Пълен номер:</strong></td>
+                            <td>{{ unit.full_number }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Вход:</strong></td>
+                            <td>{{ unit.entrance }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Етаж:</strong></td>
+                            <td>
+                                {% if unit.floor == 0 %}
+                                    Партер
+                                {% else %}
+                                    {{ unit.floor }}
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Номер:</strong></td>
+                            <td>{{ unit.number }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Площ:</strong></td>
+                            <td>
+                                {% if unit.area_m2 %}
+                                    {{ "%.2f"|format(unit.area_m2) }} кв.м
+                                {% else %}
+                                    <span class="text-muted">Не е указана</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Идеални части:</strong></td>
+                            <td>
+                                {% if unit.shares %}
+                                    {{ "%.6f"|format(unit.shares) }}
+                                {% else %}
+                                    <span class="text-muted">Не са указани</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Домофон:</strong></td>
+                            <td>
+                                {% if unit.intercom_ext %}
+                                    {{ unit.intercom_ext }}
+                                {% else %}
+                                    <span class="text-muted">Не е настроен</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Статус:</strong></td>
+                            <td>
+                                {% if unit.is_active %}
+                                    <span class="badge bg-success">Активен</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Неактивен</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Memberships -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-users me-1"></i>
+                        Обитатели
+                    </h5>
+                    <span class="badge bg-primary">{{ memberships|selectattr('is_active')|list|length }} активни</span>
+                </div>
+                <div class="card-body">
+                    {% if memberships %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Име</th>
+                                        <th>Роля</th>
+                                        <th>От дата</th>
+                                        <th>Статус</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for membership in memberships %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center text-white me-2">
+                                                    <i class="fas fa-user fa-sm"></i>
+                                                </div>
+                                                <div>
+                                                    <strong>{{ membership.user.full_name or membership.user.email }}</strong>
+                                                    {% if membership.is_primary %}
+                                                        <br><small class="text-muted">Основен обитател</small>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ membership.role.value }}</span>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ membership.since.strftime('%d.%m.%Y') if membership.since else 'N/A' }}</small>
+                                        </td>
+                                        <td>
+                                            {% if membership.is_active %}
+                                                <span class="badge bg-success">Активен</span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">Неактивен</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-users text-muted fa-3x mb-3"></i>
+                            <p class="text-muted mb-0">Няма регистрирани обитатели</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Additional Information -->
+    <div class="row">
+        <!-- Settings -->
+        {% if unit.settings and unit.settings|length > 0 %}
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-cog me-1"></i>
+                        Настройки
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded"><code>{{ unit.settings|tojson(indent=2) }}</code></pre>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Quick Stats -->
+        <div class="col-lg-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-chart-bar me-1"></i>
+                        Бърза информация
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h4 class="text-primary mb-1">{{ memberships|selectattr('is_active')|list|length }}</h4>
+                                <small class="text-muted">Активни обитатели</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h4 class="text-success mb-1">{{ memberships|selectattr('role.value', 'equalto', 'owner')|list|length }}</h4>
+                                <small class="text-muted">Собственици</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h4 class="text-info mb-1">{{ memberships|selectattr('role.value', 'equalto', 'tenant')|list|length }}</h4>
+                                <small class="text-muted">Наематели</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="border rounded p-3 text-center">
+                                <h4 class="text-warning mb-1">{{ memberships|selectattr('is_primary')|list|length }}</h4>
+                                <small class="text-muted">Основни</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contact Information -->
+    {% set primary_members = memberships|selectattr('is_primary')|selectattr('is_active')|list %}
+    {% if primary_members %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-phone me-1"></i>
+                        Контактна информация
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for membership in primary_members %}
+                        <div class="col-md-6 col-lg-4 mb-3">
+                            <div class="border rounded p-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="avatar-sm bg-primary rounded-circle d-flex align-items-center justify-content-center text-white me-2">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <div>
+                                        <strong>{{ membership.user.full_name or membership.user.email }}</strong>
+                                        <br><small class="text-muted">{{ membership.role.value }}</small>
+                                    </div>
+                                </div>
+                                {% if membership.user.phone %}
+                                <p class="mb-1">
+                                    <i class="fas fa-phone text-muted me-1"></i>
+                                    <a href="tel:{{ membership.user.phone }}">{{ membership.user.phone }}</a>
+                                </p>
+                                {% endif %}
+                                <p class="mb-0">
+                                    <i class="fas fa-envelope text-muted me-1"></i>
+                                    <a href="mailto:{{ membership.user.email }}">{{ membership.user.email }}</a>
+                                </p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

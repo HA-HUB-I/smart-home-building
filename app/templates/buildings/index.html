@@ -1,0 +1,204 @@
+{% extends "base.html" %}
+
+{% block title %}Сгради - WebPortal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">
+                <i class="bi bi-building"></i> Сгради
+            </h1>
+            <div class="btn-toolbar mb-2 mb-md-0">
+                <div class="btn-group me-2">
+                    <a href="{{ url_for('buildings.search') }}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-search"></i> Търсене
+                    </a>
+                </div>
+                {% if current_user.is_superuser or current_user.global_role.value in ['superadmin', 'staff'] %}
+                <div class="btn-group me-2">
+                    <a href="{{ url_for('admin.index') }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-plus"></i> Нова сграда
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if buildings %}
+<div class="row">
+    {% for building in buildings %}
+    <div class="col-lg-4 col-md-6 mb-4">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-building me-2"></i>
+                    {{ building.name }}
+                    {% if not building.is_active %}
+                        <span class="badge bg-warning ms-2">Неактивна</span>
+                    {% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <h6 class="text-muted">
+                    <i class="bi bi-geo-alt"></i> Адрес
+                </h6>
+                <p class="card-text">
+                    {% if building.address %}
+                        {{ building.address.get('street', '') }} {{ building.address.get('number', '') }}<br>
+                        {{ building.address.get('city', '') }} {{ building.address.get('postcode', '') }}
+                    {% else %}
+                        Няма въведен адрес
+                    {% endif %}
+                </p>
+                
+                <div class="row text-center mb-3">
+                    <div class="col-4">
+                        <div class="border-end">
+                            <h6 class="text-primary">{{ building.entrances|length if building.entrances else 0 }}</h6>
+                            <small class="text-muted">Входа</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border-end">
+                            <h6 class="text-success">{{ building.units|length }}</h6>
+                            <small class="text-muted">Обекта</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <h6 class="text-info">{{ building.active_memberships_count if building.active_memberships_count else 0 }}</h6>
+                        <small class="text-muted">Живущи</small>
+                    </div>
+                </div>
+                
+                {% if building.entrances %}
+                <h6 class="text-muted mb-2">Входове:</h6>
+                <div class="mb-3">
+                    {% for entrance in building.entrances %}
+                        <span class="badge bg-light text-dark border me-1">{{ entrance }}</span>
+                    {% endfor %}
+                </div>
+                {% endif %}
+            </div>
+            <div class="card-footer bg-transparent">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                    <a href="{{ url_for('buildings.view_building', id=building.id) }}" 
+                       class="btn btn-outline-primary btn-sm flex-fill">
+                        <i class="bi bi-eye"></i> Преглед
+                    </a>
+                    {% if current_user.is_superuser or current_user.global_role.value in ['superadmin', 'staff'] %}
+                    <a href="#" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-gear"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination placeholder -->
+{% if buildings|length > 12 %}
+<nav aria-label="Buildings pagination">
+    <ul class="pagination justify-content-center">
+        <li class="page-item disabled">
+            <span class="page-link">Предишна</span>
+        </li>
+        <li class="page-item active">
+            <span class="page-link">1</span>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="#">2</a>
+        </li>
+        <li class="page-item">
+            <a class="page-link" href="#">Следваща</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+
+{% else %}
+<!-- No buildings message -->
+<div class="row">
+    <div class="col-12">
+        <div class="text-center py-5">
+            <i class="bi bi-building" style="font-size: 4rem; color: #ddd;"></i>
+            <h3 class="mt-3 text-muted">Няма намерени сгради</h3>
+            <p class="text-muted">
+                {% if current_user.is_superuser or current_user.global_role.value in ['superadmin', 'staff'] %}
+                    Можете да добавите нова сграда от административния панел.
+                {% else %}
+                    Все още нямате достъп до сгради. Свържете се с администратор.
+                {% endif %}
+            </p>
+            
+            {% if current_user.is_superuser or current_user.global_role.value in ['superadmin', 'staff'] %}
+            <a href="{{ url_for('admin.index') }}" class="btn btn-primary">
+                <i class="bi bi-plus"></i> Добави сграда
+            </a>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Quick stats -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-bar-chart"></i> Статистика
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-md-3">
+                        <h4 class="text-primary">{{ buildings|length }}</h4>
+                        <p class="text-muted mb-0">Общо сгради</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-success">
+                            {% set total_units = 0 %}
+                            {% for building in buildings %}
+                                {% set total_units = total_units + building.units|length %}
+                            {% endfor %}
+                            {{ total_units }}
+                        </h4>
+                        <p class="text-muted mb-0">Общо обекти</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-info">{{ buildings|selectattr('is_active')|list|length }}</h4>
+                        <p class="text-muted mb-0">Активни сгради</p>
+                    </div>
+                    <div class="col-md-3">
+                        <h4 class="text-warning">
+                            {% set total_entrances = 0 %}
+                            {% for building in buildings %}
+                                {% if building.entrances %}
+                                    {% set total_entrances = total_entrances + building.entrances|length %}
+                                {% endif %}
+                            {% endfor %}
+                            {{ total_entrances }}
+                        </h4>
+                        <p class="text-muted mb-0">Общо входове</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Auto-refresh every 5 minutes
+setTimeout(function() {
+    window.location.reload();
+}, 300000);
+</script>
+{% endblock %}

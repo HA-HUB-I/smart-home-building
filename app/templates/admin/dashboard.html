@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WebPortal Admin Dashboard{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <style>
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card.secondary {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .stat-card.success {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        
+        .stat-card.warning {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+        }
+        
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .stat-label {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .recent-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .recent-item:last-child {
+            border-bottom: none;
+        }
+        
+        .navbar-brand {
+            font-weight: bold;
+        }
+        
+        .quick-actions .btn {
+            margin: 5px;
+        }
+        
+        .sidebar {
+            background: #f8f9fa;
+            min-height: calc(100vh - 56px);
+            padding: 20px 0;
+        }
+        
+        .sidebar .nav-link {
+            color: #495057;
+            padding: 10px 20px;
+        }
+        
+        .sidebar .nav-link:hover {
+            background: #e9ecef;
+            color: #007bff;
+        }
+        
+        .sidebar .nav-link.active {
+            background: #007bff;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('admin.index') }}">
+                <i class="bi bi-building"></i> WebPortal Admin
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-circle"></i> {{ current_user.full_name or current_user.email }}
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{{ url_for('main.index') }}"><i class="bi bi-house"></i> Главна страница</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('auth.profile') }}"><i class="bi bi-person"></i> Профил</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('auth.logout') }}"><i class="bi bi-box-arrow-right"></i> Изход</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-3 col-lg-2 sidebar">
+                <nav class="nav flex-column">
+                    <a class="nav-link active" href="{{ url_for('admin.index') }}">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                    
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Потребители</span>
+                    </h6>
+                    <a class="nav-link" href="{{ url_for('user.index_view') }}">
+                        <i class="bi bi-people"></i> Потребители
+                    </a>
+                    <a class="nav-link" href="{{ url_for('membership.index_view') }}">
+                        <i class="bi bi-person-badge"></i> Членства
+                    </a>
+                    
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Сгради</span>
+                    </h6>
+                    <a class="nav-link" href="{{ url_for('building.index_view') }}">
+                        <i class="bi bi-building"></i> Сгради
+                    </a>
+                    <a class="nav-link" href="{{ url_for('unit.index_view') }}">
+                        <i class="bi bi-door-open"></i> Обекти
+                    </a>
+                    
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Финанси</span>
+                    </h6>
+                    <a class="nav-link" href="{{ url_for('expense.index_view') }}">
+                        <i class="bi bi-receipt"></i> Разходи
+                    </a>
+                    <a class="nav-link" href="{{ url_for('invoice.index_view') }}">
+                        <i class="bi bi-file-text"></i> Фактури
+                    </a>
+                    <a class="nav-link" href="{{ url_for('payment.index_view') }}">
+                        <i class="bi bi-credit-card"></i> Плащания
+                    </a>
+                    
+                    <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+                        <span>Система</span>
+                    </h6>
+                    <a class="nav-link" href="{{ url_for('announcement.index_view') }}">
+                        <i class="bi bi-megaphone"></i> Известия
+                    </a>
+                    <a class="nav-link" href="{{ url_for('auditlog.index_view') }}">
+                        <i class="bi bi-clock-history"></i> Audit Log
+                    </a>
+                </nav>
+            </div>
+            
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+                {% block content %}
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2"><i class="bi bi-speedometer2"></i> Dashboard</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <div class="btn-group me-2">
+                            <button type="button" class="btn btn-sm btn-outline-secondary">Експорт</button>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-primary dropdown-toggle" data-bs-toggle="dropdown">
+                            <i class="bi bi-calendar3"></i> Тази седмица
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#">Днес</a></li>
+                            <li><a class="dropdown-item" href="#">Тази седмица</a></li>
+                            <li><a class="dropdown-item" href="#">Този месец</a></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Statistics Cards -->
+                <div class="row">
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card">
+                            <div class="stat-number">{{ total_users }}</div>
+                            <div class="stat-label">
+                                <i class="bi bi-people"></i> Потребители
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card secondary">
+                            <div class="stat-number">{{ total_buildings }}</div>
+                            <div class="stat-label">
+                                <i class="bi bi-building"></i> Сгради
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card success">
+                            <div class="stat-number">{{ total_units }}</div>
+                            <div class="stat-label">
+                                <i class="bi bi-door-open"></i> Обекти
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-xl-3 col-md-6">
+                        <div class="stat-card warning">
+                            <div class="stat-number">{{ active_memberships }}</div>
+                            <div class="stat-label">
+                                <i class="bi bi-person-badge"></i> Активни членства
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Quick Actions -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-lightning"></i> Бързи действия</h5>
+                            </div>
+                            <div class="card-body quick-actions">
+                                <a href="{{ url_for('user.create_view') }}" class="btn btn-primary">
+                                    <i class="bi bi-person-plus"></i> Добави потребител
+                                </a>
+                                <a href="{{ url_for('building.create_view') }}" class="btn btn-success">
+                                    <i class="bi bi-building-add"></i> Добави сграда
+                                </a>
+                                <a href="{{ url_for('expense.create_view') }}" class="btn btn-warning">
+                                    <i class="bi bi-receipt-cutoff"></i> Нов разход
+                                </a>
+                                <a href="{{ url_for('announcement.create_view') }}" class="btn btn-info">
+                                    <i class="bi bi-megaphone-fill"></i> Ново известие
+                                </a>
+                                <button class="btn btn-secondary" onclick="exportData()">
+                                    <i class="bi bi-download"></i> Експорт данни
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Activity -->
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-clock-history"></i> Последни плащания</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                {% if recent_payments %}
+                                    {% for payment in recent_payments %}
+                                    <div class="recent-item">
+                                        <div class="d-flex justify-content-between">
+                                            <div>
+                                                <strong>{{ payment.unit.full_number }}</strong><br>
+                                                <small class="text-muted">{{ payment.method }} - {{ payment.paid_at.strftime('%d.%m.%Y') }}</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <span class="badge bg-success">{{ "%.2f"|format(payment.amount) }} лв</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="recent-item text-center text-muted">
+                                        <i class="bi bi-inbox"></i> Няма данни
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5><i class="bi bi-megaphone"></i> Последни известия</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                {% if recent_announcements %}
+                                    {% for announcement in recent_announcements %}
+                                    <div class="recent-item">
+                                        <div class="d-flex justify-content-between align-items-start">
+                                            <div>
+                                                <strong>{{ announcement.title }}</strong><br>
+                                                <small class="text-muted">{{ announcement.building.name }} - {{ announcement.created_at.strftime('%d.%m.%Y') }}</small>
+                                            </div>
+                                            <div>
+                                                {% if announcement.is_urgent %}
+                                                <span class="badge bg-danger">Спешно</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="recent-item text-center text-muted">
+                                        <i class="bi bi-inbox"></i> Няма данни
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endblock %}
+            </main>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        function exportData() {
+            // Placeholder for export functionality
+            alert('Функцията за експорт ще бъде добавена скоро...');
+        }
+        
+        // Auto-refresh dashboard every 30 seconds
+        setTimeout(function() {
+            window.location.reload();
+        }, 30000);
+    </script>
+</body>
+</html>

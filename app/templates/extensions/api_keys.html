@@ -1,0 +1,506 @@
+{% extends "base.html" %}
+
+{% block title %}API Keys Management{% endblock %}
+
+{% block extra_css %}
+<style>
+.api-key-card {
+    border-left: 4px solid #0d6efd;
+}
+
+.api-key-display {
+    font-family: 'Courier New', monospace;
+    background: #f8f9fa;
+    padding: 0.75rem;
+    border-radius: 0.375rem;
+    word-break: break-all;
+}
+
+.permission-badge {
+    font-size: 0.875rem;
+}
+
+.copy-btn {
+    position: relative;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-key me-2"></i>API Keys Management</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('extensions.index') }}">Extensions</a></li>
+                            <li class="breadcrumb-item active">API Keys</li>
+                        </ol>
+                    </nav>
+                </div>
+                <button class="btn btn-primary" onclick="showCreateModal()">
+                    <i class="fas fa-plus me-1"></i>Generate API Key
+                </button>
+            </div>
+
+            <!-- Building Selection -->
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-building me-2"></i>Building Selection</h5>
+                        </div>
+                        <div class="card-body">
+                            <select class="form-select" id="buildingSelect" onchange="loadApiKeys()">
+                                <option value="">Select a building...</option>
+                                {% for building in buildings %}
+                                <option value="{{ building.id }}">{{ building.name }} - {{ building.address.street }} {{ building.address.number }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>API Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-1"><strong>Base URL:</strong> <code>{{ request.host_url }}api/v1/</code></p>
+                            <p class="mb-1"><strong>Authentication:</strong> Bearer Token</p>
+                            <p class="mb-0"><strong>Rate Limit:</strong> 1000 requests/hour</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- API Keys List -->
+            <div id="apiKeysContainer" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4><i class="fas fa-list me-2"></i>Active API Keys</h4>
+                    <span class="badge bg-secondary" id="apiKeyCount">0 keys</span>
+                </div>
+
+                <div class="row" id="apiKeysList">
+                    <!-- API keys will be loaded here -->
+                </div>
+                
+                <div id="noApiKeys" class="text-center py-5" style="display: none;">
+                    <i class="fas fa-key fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No API keys found</h5>
+                    <p class="text-muted">Generate your first API key to start using the WebPortal API.</p>
+                    <button class="btn btn-primary" onclick="showCreateModal()">
+                        <i class="fas fa-plus me-1"></i>Generate First API Key
+                    </button>
+                </div>
+            </div>
+
+            <!-- Usage Statistics -->
+            <div class="row mt-4" id="usageStats" style="display: none;">
+                <div class="col-12">
+                    <h4><i class="fas fa-chart-bar me-2"></i>API Usage Statistics</h4>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h3 class="text-primary mb-0">0</h3>
+                                        <small class="text-muted">Requests Today</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h3 class="text-success mb-0">0</h3>
+                                        <small class="text-muted">Requests This Week</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h3 class="text-warning mb-0">0</h3>
+                                        <small class="text-muted">Requests This Month</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="text-center">
+                                        <h3 class="text-info mb-0">0%</h3>
+                                        <small class="text-muted">Error Rate</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create API Key Modal -->
+<div class="modal fade" id="createApiKeyModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Generate New API Key</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="createApiKeyForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="apiKeyName" class="form-label">Key Name</label>
+                                <input type="text" class="form-control" id="apiKeyName" placeholder="e.g., Mobile App Integration" required>
+                                <div class="form-text">A descriptive name for this API key</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="apiKeyBuilding" class="form-label">Building</label>
+                                <select class="form-select" id="apiKeyBuilding" required>
+                                    <option value="">Select building...</option>
+                                    {% for building in buildings %}
+                                    <option value="{{ building.id }}">{{ building.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Permissions</label>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="read:buildings" id="permReadBuildings">
+                                    <label class="form-check-label" for="permReadBuildings">
+                                        Read Buildings
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="read:units" id="permReadUnits">
+                                    <label class="form-check-label" for="permReadUnits">
+                                        Read Units
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="read:residents" id="permReadResidents">
+                                    <label class="form-check-label" for="permReadResidents">
+                                        Read Residents
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="read:finances" id="permReadFinances">
+                                    <label class="form-check-label" for="permReadFinances">
+                                        Read Financial Data
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="write:announcements" id="permWriteAnnouncements">
+                                    <label class="form-check-label" for="permWriteAnnouncements">
+                                        Create Announcements
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="write:expenses" id="permWriteExpenses">
+                                    <label class="form-check-label" for="permWriteExpenses">
+                                        Create Expenses
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="write:payments" id="permWritePayments">
+                                    <label class="form-check-label" for="permWritePayments">
+                                        Record Payments
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="admin:all" id="permAdminAll">
+                                    <label class="form-check-label" for="permAdminAll">
+                                        <strong>Full Administrative Access</strong>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="apiKeyExpiry" class="form-label">Expiration</label>
+                        <select class="form-select" id="apiKeyExpiry">
+                            <option value="30">30 days</option>
+                            <option value="90" selected>90 days</option>
+                            <option value="365">1 year</option>
+                            <option value="0">Never expires</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="generateApiKey()">
+                    <i class="fas fa-key me-1"></i>Generate Key
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API Key Success Modal -->
+<div class="modal fade" id="apiKeySuccessModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">API Key Generated Successfully</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Important:</strong> Copy this API key now. You won't be able to see it again.
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Your new API key:</label>
+                    <div class="api-key-display" id="generatedApiKey">
+                        <!-- API key will be inserted here -->
+                    </div>
+                    <button class="btn btn-outline-secondary btn-sm mt-2 copy-btn" onclick="copyApiKey()">
+                        <i class="fas fa-copy me-1"></i>Copy to Clipboard
+                    </button>
+                </div>
+
+                <div class="mb-3">
+                    <h6>Usage Example:</h6>
+                    <pre><code>curl -H "Authorization: Bearer YOUR_API_KEY" \
+     {{ request.host_url }}api/v1/buildings</code></pre>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">I've Copied the Key</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedBuildingId = null;
+
+function showCreateModal() {
+    const buildingSelect = document.getElementById('buildingSelect');
+    if (buildingSelect.value) {
+        document.getElementById('apiKeyBuilding').value = buildingSelect.value;
+    }
+    new bootstrap.Modal(document.getElementById('createApiKeyModal')).show();
+}
+
+function loadApiKeys() {
+    const buildingId = document.getElementById('buildingSelect').value;
+    selectedBuildingId = buildingId;
+    
+    if (!buildingId) {
+        document.getElementById('apiKeysContainer').style.display = 'none';
+        document.getElementById('usageStats').style.display = 'none';
+        return;
+    }
+
+    // Show containers
+    document.getElementById('apiKeysContainer').style.display = 'block';
+    document.getElementById('usageStats').style.display = 'block';
+
+    // Load API keys (placeholder - implement actual loading)
+    loadSampleApiKeys();
+}
+
+function loadSampleApiKeys() {
+    // Sample data - replace with actual API call
+    const sampleKeys = [
+        {
+            id: 1,
+            name: 'Mobile App Integration',
+            key: 'wpa_' + 'x'.repeat(32),
+            permissions: ['read:buildings', 'read:units', 'write:announcements'],
+            created_at: '2024-01-15',
+            last_used: '2024-01-20',
+            requests_count: 142
+        },
+        {
+            id: 2,
+            name: 'Financial System',
+            key: 'wpa_' + 'y'.repeat(32),
+            permissions: ['read:finances', 'write:expenses', 'write:payments'],
+            created_at: '2024-01-10',
+            last_used: '2024-01-19',
+            requests_count: 89
+        }
+    ];
+
+    displayApiKeys(sampleKeys);
+}
+
+function displayApiKeys(keys) {
+    const container = document.getElementById('apiKeysList');
+    const countElement = document.getElementById('apiKeyCount');
+    const noKeysElement = document.getElementById('noApiKeys');
+
+    if (keys.length === 0) {
+        container.innerHTML = '';
+        noKeysElement.style.display = 'block';
+        countElement.textContent = '0 keys';
+        return;
+    }
+
+    noKeysElement.style.display = 'none';
+    countElement.textContent = keys.length + ' key' + (keys.length !== 1 ? 's' : '');
+
+    container.innerHTML = keys.map(key => `
+        <div class="col-md-6 mb-3">
+            <div class="card api-key-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0">${key.name}</h6>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Actions
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="regenerateKey(${key.id})">
+                                <i class="fas fa-sync me-1"></i>Regenerate
+                            </a></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="revokeKey(${key.id})">
+                                <i class="fas fa-trash me-1"></i>Revoke
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <small class="text-muted">API Key (hidden for security):</small>
+                        <div class="api-key-display">
+                            ${key.key.substring(0, 12)}${'*'.repeat(24)}
+                        </div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <small class="text-muted">Permissions:</small><br>
+                        ${key.permissions.map(perm => `<span class="badge bg-secondary permission-badge me-1">${perm}</span>`).join('')}
+                    </div>
+                    
+                    <div class="row text-center mt-3">
+                        <div class="col-4">
+                            <small class="text-muted">Created</small><br>
+                            <strong>${key.created_at}</strong>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted">Last Used</small><br>
+                            <strong>${key.last_used}</strong>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted">Requests</small><br>
+                            <strong>${key.requests_count}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function generateApiKey() {
+    const form = document.getElementById('createApiKeyForm');
+    const formData = new FormData(form);
+    
+    const name = document.getElementById('apiKeyName').value;
+    const buildingId = document.getElementById('apiKeyBuilding').value;
+    
+    if (!name || !buildingId) {
+        showAlert('Please fill in all required fields', 'warning');
+        return;
+    }
+
+    // Get selected permissions
+    const permissions = [];
+    document.querySelectorAll('#createApiKeyForm input[type="checkbox"]:checked').forEach(checkbox => {
+        permissions.push(checkbox.value);
+    });
+
+    fetch('/extensions/api/generate-api-key', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            name: name,
+            building_id: parseInt(buildingId),
+            permissions: permissions
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('createApiKeyModal')).hide();
+            
+            // Show the generated API key
+            document.getElementById('generatedApiKey').textContent = data.api_key;
+            new bootstrap.Modal(document.getElementById('apiKeySuccessModal')).show();
+            
+            // Reload the API keys list
+            loadApiKeys();
+        } else {
+            showAlert('Failed to generate API key: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error generating API key', 'danger');
+    });
+}
+
+function copyApiKey() {
+    const apiKey = document.getElementById('generatedApiKey').textContent;
+    navigator.clipboard.writeText(apiKey).then(() => {
+        const button = document.querySelector('.copy-btn');
+        const originalHTML = button.innerHTML;
+        button.innerHTML = '<i class="fas fa-check me-1"></i>Copied!';
+        button.classList.add('btn-success');
+        button.classList.remove('btn-outline-secondary');
+        
+        setTimeout(() => {
+            button.innerHTML = originalHTML;
+            button.classList.remove('btn-success');
+            button.classList.add('btn-outline-secondary');
+        }, 2000);
+    });
+}
+
+function regenerateKey(keyId) {
+    if (confirm('Are you sure you want to regenerate this API key? The old key will be immediately revoked.')) {
+        showAlert('API key regeneration not implemented yet', 'info');
+    }
+}
+
+function revokeKey(keyId) {
+    if (confirm('Are you sure you want to revoke this API key? This action cannot be undone.')) {
+        showAlert('API key revocation not implemented yet', 'info');
+    }
+}
+
+function showAlert(message, type = 'info') {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alert, container.firstChild);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

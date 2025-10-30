@@ -1,0 +1,689 @@
+{% extends "base.html" %}
+
+{% block title %}Integrations - Home Assistant & IoT{% endblock %}
+
+{% block extra_css %}
+<style>
+.integration-card {
+    transition: transform 0.2s;
+    border: 1px solid #e9ecef;
+}
+
+.integration-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.integration-status {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 0.5rem;
+}
+
+.integration-status.connected {
+    background-color: #28a745;
+}
+
+.integration-status.disconnected {
+    background-color: #dc3545;
+}
+
+.integration-status.pending {
+    background-color: #ffc107;
+}
+
+.config-section {
+    background: #f8f9fa;
+    border-radius: 0.375rem;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.device-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.device-item {
+    padding: 0.5rem;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.device-item:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-home me-2"></i>Home Assistant & IoT Integrations</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('extensions.index') }}">Extensions</a></li>
+                            <li class="breadcrumb-item active">Integrations</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary me-2" onclick="scanDevices()">
+                        <i class="fas fa-search me-1"></i>Scan Devices
+                    </button>
+                    <button class="btn btn-primary" onclick="showAddIntegrationModal()">
+                        <i class="fas fa-plus me-1"></i>Add Integration
+                    </button>
+                </div>
+            </div>
+
+            <!-- Building Selection -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-building me-2"></i>Building Selection</h5>
+                        </div>
+                        <div class="card-body">
+                            <select class="form-select" id="buildingSelect" onchange="loadIntegrations()">
+                                <option value="">Select a building...</option>
+                                {% for building in buildings %}
+                                <option value="{{ building.id }}">{{ building.name }} - {{ building.address.street }} {{ building.address.number }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Integration Stats</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <span>Active:</span>
+                                <span class="text-success" id="activeCount">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Pending:</span>
+                                <span class="text-warning" id="pendingCount">0</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Devices:</span>
+                                <span class="text-info" id="deviceCount">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Integrations List -->
+            <div id="integrationsContainer" style="display: none;">
+                <div class="row" id="integrationsList">
+                    <!-- Integrations will be loaded here -->
+                </div>
+                
+                <div id="noIntegrations" class="text-center py-5" style="display: none;">
+                    <i class="fas fa-plug fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No integrations configured</h5>
+                    <p class="text-muted">Connect your building with smart home systems and IoT devices.</p>
+                    <button class="btn btn-primary" onclick="showAddIntegrationModal()">
+                        <i class="fas fa-plus me-1"></i>Add First Integration
+                    </button>
+                </div>
+            </div>
+
+            <!-- Device Dashboard -->
+            <div id="deviceDashboard" style="display: none;">
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <h4><i class="fas fa-microchip me-2"></i>Connected Devices</h4>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Sensors</h6>
+                            </div>
+                            <div class="card-body device-list" id="sensorsList">
+                                <!-- Sensors will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Controls</h6>
+                            </div>
+                            <div class="card-body device-list" id="controlsList">
+                                <!-- Controls will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Integration Modal -->
+<div class="modal fade" id="addIntegrationModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Integration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Integration Type Selection -->
+                <div class="mb-4">
+                    <label class="form-label">Integration Type</label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card integration-card" onclick="selectIntegrationType('home_assistant')" style="cursor: pointer;">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-home fa-2x text-primary mb-2"></i>
+                                    <h6>Home Assistant</h6>
+                                    <p class="small text-muted">Connect to Home Assistant instance</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card integration-card" onclick="selectIntegrationType('mqtt')" style="cursor: pointer;">
+                                <div class="card-body text-center">
+                                    <i class="fas fa-network-wired fa-2x text-success mb-2"></i>
+                                    <h6>MQTT Broker</h6>
+                                    <p class="small text-muted">Connect to MQTT broker for IoT devices</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration Form -->
+                <form id="integrationForm" style="display: none;">
+                    <input type="hidden" id="integrationType" value="">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="integrationName" class="form-label">Integration Name</label>
+                                <input type="text" class="form-control" id="integrationName" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="integrationBuilding" class="form-label">Building</label>
+                                <select class="form-select" id="integrationBuilding" required>
+                                    <option value="">Select building...</option>
+                                    {% for building in buildings %}
+                                    <option value="{{ building.id }}">{{ building.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Home Assistant Config -->
+                    <div id="homeAssistantConfig" class="config-section" style="display: none;">
+                        <h6><i class="fas fa-home me-2"></i>Home Assistant Configuration</h6>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="haUrl" class="form-label">Home Assistant URL</label>
+                                    <input type="url" class="form-control" id="haUrl" placeholder="http://192.168.1.100:8123">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="haToken" class="form-label">Long-Lived Access Token</label>
+                                    <input type="password" class="form-control" id="haToken" placeholder="Enter your HA token">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="haEntities" class="form-label">Entities to Monitor (optional)</label>
+                            <textarea class="form-control" id="haEntities" rows="3" placeholder="sensor.temperature&#10;switch.main_door&#10;camera.entrance"></textarea>
+                            <div class="form-text">One entity per line. Leave empty to discover automatically.</div>
+                        </div>
+                    </div>
+
+                    <!-- MQTT Config -->
+                    <div id="mqttConfig" class="config-section" style="display: none;">
+                        <h6><i class="fas fa-network-wired me-2"></i>MQTT Broker Configuration</h6>
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="mb-3">
+                                    <label for="mqttHost" class="form-label">MQTT Broker Host</label>
+                                    <input type="text" class="form-control" id="mqttHost" placeholder="192.168.1.100">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label for="mqttPort" class="form-label">Port</label>
+                                    <input type="number" class="form-control" id="mqttPort" value="1883">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="mqttUsername" class="form-label">Username (optional)</label>
+                                    <input type="text" class="form-control" id="mqttUsername">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="mqttPassword" class="form-label">Password (optional)</label>
+                                    <input type="password" class="form-control" id="mqttPassword">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="mqttTopics" class="form-label">Topics to Subscribe</label>
+                            <textarea class="form-control" id="mqttTopics" rows="3" placeholder="building/+/sensors/+&#10;building/+/controls/+"></textarea>
+                            <div class="form-text">One topic per line. Use + for single-level wildcards, # for multi-level.</div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-outline-primary me-2" onclick="testIntegrationConnection()" id="testConnectionBtn" style="display: none;">
+                    <i class="fas fa-flask me-1"></i>Test Connection
+                </button>
+                <button type="button" class="btn btn-primary" onclick="createIntegration()" id="createIntegrationBtn" style="display: none;">
+                    <i class="fas fa-plus me-1"></i>Add Integration
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Device Details Modal -->
+<div class="modal fade" id="deviceDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deviceDetailsTitle">Device Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="deviceDetailsContent">
+                <!-- Device details will be loaded here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="configureDevice()" id="configureDeviceBtn">
+                    <i class="fas fa-cog me-1"></i>Configure
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedBuildingId = null;
+let selectedIntegrationType = null;
+let currentDeviceId = null;
+
+function showAddIntegrationModal() {
+    const buildingSelect = document.getElementById('buildingSelect');
+    if (buildingSelect.value) {
+        document.getElementById('integrationBuilding').value = buildingSelect.value;
+    }
+    new bootstrap.Modal(document.getElementById('addIntegrationModal')).show();
+}
+
+function selectIntegrationType(type) {
+    selectedIntegrationType = type;
+    document.getElementById('integrationType').value = type;
+    
+    // Hide all config sections
+    document.getElementById('homeAssistantConfig').style.display = 'none';
+    document.getElementById('mqttConfig').style.display = 'none';
+    
+    // Show relevant config section
+    if (type === 'home_assistant') {
+        document.getElementById('homeAssistantConfig').style.display = 'block';
+        document.getElementById('integrationName').value = 'Home Assistant';
+    } else if (type === 'mqtt') {
+        document.getElementById('mqttConfig').style.display = 'block';
+        document.getElementById('integrationName').value = 'MQTT Broker';
+    }
+    
+    // Show form and buttons
+    document.getElementById('integrationForm').style.display = 'block';
+    document.getElementById('testConnectionBtn').style.display = 'inline-block';
+    document.getElementById('createIntegrationBtn').style.display = 'inline-block';
+}
+
+function loadIntegrations() {
+    const buildingId = document.getElementById('buildingSelect').value;
+    selectedBuildingId = buildingId;
+    
+    if (!buildingId) {
+        document.getElementById('integrationsContainer').style.display = 'none';
+        document.getElementById('deviceDashboard').style.display = 'none';
+        return;
+    }
+
+    // Show containers
+    document.getElementById('integrationsContainer').style.display = 'block';
+    document.getElementById('deviceDashboard').style.display = 'block';
+
+    // Load integrations (placeholder - implement actual loading)
+    loadSampleIntegrations();
+    loadSampleDevices();
+}
+
+function loadSampleIntegrations() {
+    // Sample data - replace with actual API call
+    const sampleIntegrations = [
+        {
+            id: 1,
+            name: 'Home Assistant',
+            type: 'home_assistant',
+            status: 'connected',
+            url: 'http://192.168.1.100:8123',
+            devices_count: 15,
+            last_sync: '2024-01-20 14:30',
+            entities: ['sensor.temperature', 'switch.main_door', 'camera.entrance']
+        },
+        {
+            id: 2,
+            name: 'MQTT Broker',
+            type: 'mqtt',
+            status: 'connected',
+            url: 'mqtt://192.168.1.101:1883',
+            devices_count: 8,
+            last_sync: '2024-01-20 14:25',
+            topics: ['building/sensors/+', 'building/controls/+']
+        }
+    ];
+
+    displayIntegrations(sampleIntegrations);
+}
+
+function displayIntegrations(integrations) {
+    const container = document.getElementById('integrationsList');
+    const noIntegrationsElement = document.getElementById('noIntegrations');
+
+    // Update stats
+    const activeCount = integrations.filter(i => i.status === 'connected').length;
+    const pendingCount = integrations.filter(i => i.status === 'pending').length;
+    const deviceCount = integrations.reduce((sum, i) => sum + i.devices_count, 0);
+    
+    document.getElementById('activeCount').textContent = activeCount;
+    document.getElementById('pendingCount').textContent = pendingCount;
+    document.getElementById('deviceCount').textContent = deviceCount;
+
+    if (integrations.length === 0) {
+        container.innerHTML = '';
+        noIntegrationsElement.style.display = 'block';
+        return;
+    }
+
+    noIntegrationsElement.style.display = 'none';
+
+    container.innerHTML = integrations.map(integration => `
+        <div class="col-md-6 mb-3">
+            <div class="card integration-card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <div class="d-flex align-items-center">
+                        <span class="integration-status ${integration.status}"></span>
+                        <h6 class="mb-0">${integration.name}</h6>
+                        <span class="badge bg-secondary ms-2">${integration.type}</span>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                            Actions
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" onclick="syncIntegration(${integration.id})">
+                                <i class="fas fa-sync me-1"></i>Sync Now
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="editIntegration(${integration.id})">
+                                <i class="fas fa-edit me-1"></i>Edit
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="deleteIntegration(${integration.id})">
+                                <i class="fas fa-trash me-1"></i>Delete
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <small class="text-muted">URL:</small>
+                        <div class="text-truncate">${integration.url}</div>
+                    </div>
+                    
+                    <div class="row text-center mt-3">
+                        <div class="col-4">
+                            <small class="text-muted">Devices</small><br>
+                            <strong class="text-primary">${integration.devices_count}</strong>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted">Status</small><br>
+                            <span class="badge bg-${integration.status === 'connected' ? 'success' : 'warning'}">${integration.status}</span>
+                        </div>
+                        <div class="col-4">
+                            <small class="text-muted">Last Sync</small><br>
+                            <strong>${integration.last_sync.split(' ')[1]}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function loadSampleDevices() {
+    const sampleSensors = [
+        {id: 1, name: 'Entrance Temperature', type: 'temperature', value: '22.5°C', status: 'online'},
+        {id: 2, name: 'Humidity Sensor', type: 'humidity', value: '45%', status: 'online'},
+        {id: 3, name: 'Door Sensor', type: 'binary', value: 'Closed', status: 'online'},
+        {id: 4, name: 'Motion Detector', type: 'motion', value: 'Clear', status: 'offline'}
+    ];
+
+    const sampleControls = [
+        {id: 5, name: 'Main Door Lock', type: 'switch', value: 'Locked', status: 'online'},
+        {id: 6, name: 'Entrance Light', type: 'light', value: 'On', status: 'online'},
+        {id: 7, name: 'Elevator Call', type: 'button', value: 'Ready', status: 'online'}
+    ];
+
+    displayDevices(sampleSensors, sampleControls);
+}
+
+function displayDevices(sensors, controls) {
+    const sensorsContainer = document.getElementById('sensorsList');
+    const controlsContainer = document.getElementById('controlsList');
+
+    sensorsContainer.innerHTML = sensors.map(device => `
+        <div class="device-item d-flex justify-content-between align-items-center" onclick="showDeviceDetails(${device.id})">
+            <div>
+                <strong>${device.name}</strong><br>
+                <small class="text-muted">${device.type}</small>
+            </div>
+            <div class="text-end">
+                <div>${device.value}</div>
+                <span class="badge bg-${device.status === 'online' ? 'success' : 'secondary'} badge-sm">${device.status}</span>
+            </div>
+        </div>
+    `).join('');
+
+    controlsContainer.innerHTML = controls.map(device => `
+        <div class="device-item d-flex justify-content-between align-items-center" onclick="showDeviceDetails(${device.id})">
+            <div>
+                <strong>${device.name}</strong><br>
+                <small class="text-muted">${device.type}</small>
+            </div>
+            <div class="text-end">
+                <div>${device.value}</div>
+                <span class="badge bg-${device.status === 'online' ? 'success' : 'secondary'} badge-sm">${device.status}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function testIntegrationConnection() {
+    const type = selectedIntegrationType;
+    let config = {};
+
+    if (type === 'home_assistant') {
+        config = {
+            url: document.getElementById('haUrl').value,
+            token: document.getElementById('haToken').value
+        };
+    } else if (type === 'mqtt') {
+        config = {
+            host: document.getElementById('mqttHost').value,
+            port: document.getElementById('mqttPort').value,
+            username: document.getElementById('mqttUsername').value,
+            password: document.getElementById('mqttPassword').value
+        };
+    }
+
+    fetch('/extensions/api/test-integration', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            type: type,
+            config: config
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Integration test successful!', 'success');
+        } else {
+            showAlert('Integration test failed: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error testing integration', 'danger');
+    });
+}
+
+function createIntegration() {
+    const name = document.getElementById('integrationName').value;
+    const buildingId = document.getElementById('integrationBuilding').value;
+    
+    if (!name || !buildingId || !selectedIntegrationType) {
+        showAlert('Please fill in all required fields', 'warning');
+        return;
+    }
+
+    // Simulate integration creation (replace with actual API call)
+    setTimeout(() => {
+        bootstrap.Modal.getInstance(document.getElementById('addIntegrationModal')).hide();
+        showAlert('Integration added successfully!', 'success');
+        loadIntegrations(); // Reload the list
+    }, 500);
+}
+
+function scanDevices() {
+    showAlert('Device scan started. This may take a few minutes...', 'info');
+    
+    // Simulate device scanning
+    setTimeout(() => {
+        showAlert('Device scan completed. Found 3 new devices.', 'success');
+        loadSampleDevices(); // Reload devices
+    }, 3000);
+}
+
+function showDeviceDetails(deviceId) {
+    currentDeviceId = deviceId;
+    
+    // Sample device details
+    const deviceDetails = {
+        name: 'Entrance Temperature Sensor',
+        type: 'Temperature Sensor',
+        status: 'Online',
+        last_seen: '2024-01-20 14:35:22',
+        battery: '85%',
+        firmware: '1.2.3',
+        location: 'Main Entrance',
+        current_value: '22.5°C',
+        history: ['22.3°C (14:30)', '22.1°C (14:25)', '22.4°C (14:20)']
+    };
+
+    document.getElementById('deviceDetailsTitle').textContent = deviceDetails.name;
+    document.getElementById('deviceDetailsContent').innerHTML = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Device Information</h6>
+                <table class="table table-sm">
+                    <tr><td>Type:</td><td>${deviceDetails.type}</td></tr>
+                    <tr><td>Status:</td><td><span class="badge bg-success">${deviceDetails.status}</span></td></tr>
+                    <tr><td>Last Seen:</td><td>${deviceDetails.last_seen}</td></tr>
+                    <tr><td>Battery:</td><td>${deviceDetails.battery}</td></tr>
+                    <tr><td>Firmware:</td><td>${deviceDetails.firmware}</td></tr>
+                    <tr><td>Location:</td><td>${deviceDetails.location}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6>Current Reading</h6>
+                <div class="text-center mb-3">
+                    <h2 class="text-primary">${deviceDetails.current_value}</h2>
+                </div>
+                <h6>Recent History</h6>
+                <ul class="list-unstyled">
+                    ${deviceDetails.history.map(reading => `<li><small>${reading}</small></li>`).join('')}
+                </ul>
+            </div>
+        </div>
+    `;
+
+    new bootstrap.Modal(document.getElementById('deviceDetailsModal')).show();
+}
+
+function configureDevice() {
+    showAlert('Device configuration not implemented yet', 'info');
+}
+
+function syncIntegration(integrationId) {
+    showAlert('Integration sync started...', 'info');
+    
+    setTimeout(() => {
+        showAlert('Integration synced successfully!', 'success');
+    }, 2000);
+}
+
+function editIntegration(integrationId) {
+    showAlert('Integration editing not implemented yet', 'info');
+}
+
+function deleteIntegration(integrationId) {
+    if (confirm('Are you sure you want to delete this integration? All associated device data will be lost.')) {
+        showAlert('Integration deletion not implemented yet', 'info');
+    }
+}
+
+function showAlert(message, type = 'info') {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alert, container.firstChild);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

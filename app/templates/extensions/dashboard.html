@@ -1,0 +1,430 @@
+{% extends "base.html" %}
+
+{% block title %}Extensions & Integrations{% endblock %}
+
+{% block extra_css %}
+<style>
+.extension-card {
+    transition: transform 0.2s;
+    border: 1px solid #e9ecef;
+}
+
+.extension-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.extension-icon {
+    font-size: 3rem;
+    color: #0d6efd;
+}
+
+.feature-list {
+    list-style: none;
+    padding: 0;
+}
+
+.feature-list li {
+    padding: 0.25rem 0;
+}
+
+.feature-list i {
+    color: #28a745;
+    margin-right: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-plug me-2"></i>Extensions & Integrations</h2>
+                {% if current_user.is_superuser %}
+                <a href="{{ url_for('extensions.plugins') }}" class="btn btn-outline-primary">
+                    <i class="fas fa-cogs me-1"></i>Manage Plugins
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Overview Stats -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Active Integrations</h6>
+                                    <h3 class="mb-0">{{ buildings|length }}</h3>
+                                </div>
+                                <i class="fas fa-link fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">API Keys</h6>
+                                    <h3 class="mb-0">0</h3>
+                                </div>
+                                <i class="fas fa-key fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Webhooks</h6>
+                                    <h3 class="mb-0">0</h3>
+                                </div>
+                                <i class="fas fa-webhook fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <h6 class="card-title">Custom Fields</h6>
+                                    <h3 class="mb-0">0</h3>
+                                </div>
+                                <i class="fas fa-plus-square fa-2x opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Extension Modules -->
+            <div class="row">
+                <!-- API Management -->
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card extension-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-key extension-icon"></i>
+                            <h5 class="card-title mt-3">API Management</h5>
+                            <p class="card-text">Manage API keys, authentication, and external access to your building data.</p>
+                            <ul class="feature-list text-start">
+                                <li><i class="fas fa-check"></i>Generate API keys</li>
+                                <li><i class="fas fa-check"></i>Set permissions</li>
+                                <li><i class="fas fa-check"></i>Monitor usage</li>
+                                <li><i class="fas fa-check"></i>Rate limiting</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer">
+                            <a href="{{ url_for('extensions.api_keys') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-cog me-1"></i>Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Webhooks -->
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card extension-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-webhook extension-icon"></i>
+                            <h5 class="card-title mt-3">Webhooks</h5>
+                            <p class="card-text">Set up webhooks to receive real-time notifications about building events.</p>
+                            <ul class="feature-list text-start">
+                                <li><i class="fas fa-check"></i>Event notifications</li>
+                                <li><i class="fas fa-check"></i>Custom endpoints</li>
+                                <li><i class="fas fa-check"></i>Retry logic</li>
+                                <li><i class="fas fa-check"></i>Payload filtering</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer">
+                            <a href="{{ url_for('extensions.webhooks') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-cog me-1"></i>Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Home Assistant & IoT -->
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card extension-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-home extension-icon"></i>
+                            <h5 class="card-title mt-3">Home Assistant & IoT</h5>
+                            <p class="card-text">Integrate with Home Assistant, smart devices, and IoT sensors.</p>
+                            <ul class="feature-list text-start">
+                                <li><i class="fas fa-check"></i>Home Assistant</li>
+                                <li><i class="fas fa-check"></i>MQTT support</li>
+                                <li><i class="fas fa-check"></i>Sensor monitoring</li>
+                                <li><i class="fas fa-check"></i>Device control</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer">
+                            <a href="{{ url_for('extensions.integrations') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-cog me-1"></i>Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment Gateways -->
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card extension-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-credit-card extension-icon"></i>
+                            <h5 class="card-title mt-3">Payment Gateways</h5>
+                            <p class="card-text">Connect with payment processors for online fee collection.</p>
+                            <ul class="feature-list text-start">
+                                <li><i class="fas fa-check"></i>Stripe integration</li>
+                                <li><i class="fas fa-check"></i>PayPal support</li>
+                                <li><i class="fas fa-check"></i>Bank transfers</li>
+                                <li><i class="fas fa-check"></i>Payment tracking</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer">
+                            <a href="{{ url_for('extensions.payment_gateways') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-cog me-1"></i>Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Custom Fields -->
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card extension-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-plus-square extension-icon"></i>
+                            <h5 class="card-title mt-3">Custom Fields</h5>
+                            <p class="card-text">Add custom data fields to buildings, units, and residents.</p>
+                            <ul class="feature-list text-start">
+                                <li><i class="fas fa-check"></i>Text fields</li>
+                                <li><i class="fas fa-check"></i>Number inputs</li>
+                                <li><i class="fas fa-check"></i>Date pickers</li>
+                                <li><i class="fas fa-check"></i>Selection lists</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer">
+                            <a href="{{ url_for('extensions.custom_fields') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-cog me-1"></i>Configure
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mobile App -->
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card extension-card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-mobile-alt extension-icon"></i>
+                            <h5 class="card-title mt-3">Mobile App</h5>
+                            <p class="card-text">PWA mobile application for residents and building managers.</p>
+                            <ul class="feature-list text-start">
+                                <li><i class="fas fa-check"></i>Progressive Web App</li>
+                                <li><i class="fas fa-check"></i>Push notifications</li>
+                                <li><i class="fas fa-check"></i>Offline support</li>
+                                <li><i class="fas fa-check"></i>Native features</li>
+                            </ul>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-success w-100" disabled>
+                                <i class="fas fa-check me-1"></i>Already Active
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if current_user.is_superuser %}
+            <!-- Developer Tools -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <h4><i class="fas fa-code me-2"></i>Developer Tools</h4>
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <h6>API Documentation</h6>
+                                    <p class="text-muted">Complete REST API documentation and examples.</p>
+                                    <button class="btn btn-outline-primary btn-sm" onclick="showApiDocs()">
+                                        <i class="fas fa-book me-1"></i>View Docs
+                                    </button>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>Webhook Testing</h6>
+                                    <p class="text-muted">Test webhook endpoints and debug integrations.</p>
+                                    <button class="btn btn-outline-primary btn-sm" onclick="testWebhook()">
+                                        <i class="fas fa-flask me-1"></i>Test Webhook
+                                    </button>
+                                </div>
+                                <div class="col-md-4">
+                                    <h6>System Logs</h6>
+                                    <p class="text-muted">Monitor system activity and debug issues.</p>
+                                    <button class="btn btn-outline-primary btn-sm" onclick="viewLogs()">
+                                        <i class="fas fa-list me-1"></i>View Logs
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Test Modal -->
+<div class="modal fade" id="testModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Test Webhook</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="webhookTestForm">
+                    <div class="mb-3">
+                        <label for="testUrl" class="form-label">Webhook URL</label>
+                        <input type="url" class="form-control" id="testUrl" placeholder="https://example.com/webhook" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="testData" class="form-label">Test Data (JSON)</label>
+                        <textarea class="form-control" id="testData" rows="4">{"test": true, "message": "Test webhook from WebPortal"}</textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="sendTestWebhook()">
+                    <i class="fas fa-paper-plane me-1"></i>Send Test
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- API Docs Modal -->
+<div class="modal fade" id="apiDocsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">API Documentation</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="accordion" id="apiAccordion">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#authEndpoints">
+                                Authentication Endpoints
+                            </button>
+                        </h2>
+                        <div id="authEndpoints" class="accordion-collapse collapse show" data-bs-parent="#apiAccordion">
+                            <div class="accordion-body">
+                                <code>POST /api/auth/token</code> - Get authentication token<br>
+                                <code>GET /api/auth/validate</code> - Validate token<br>
+                                <code>DELETE /api/auth/logout</code> - Invalidate token
+                            </div>
+                        </div>
+                    </div>
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#buildingEndpoints">
+                                Building Endpoints
+                            </button>
+                        </h2>
+                        <div id="buildingEndpoints" class="accordion-collapse collapse" data-bs-parent="#apiAccordion">
+                            <div class="accordion-body">
+                                <code>GET /api/buildings</code> - List buildings<br>
+                                <code>GET /api/buildings/{id}</code> - Get building details<br>
+                                <code>POST /api/buildings</code> - Create building<br>
+                                <code>PUT /api/buildings/{id}</code> - Update building<br>
+                                <code>DELETE /api/buildings/{id}</code> - Delete building
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showApiDocs() {
+    new bootstrap.Modal(document.getElementById('apiDocsModal')).show();
+}
+
+function testWebhook() {
+    new bootstrap.Modal(document.getElementById('testModal')).show();
+}
+
+function sendTestWebhook() {
+    const url = document.getElementById('testUrl').value;
+    const data = document.getElementById('testData').value;
+    
+    if (!url) {
+        showAlert('Please enter a webhook URL', 'warning');
+        return;
+    }
+    
+    let testData;
+    try {
+        testData = JSON.parse(data);
+    } catch (e) {
+        showAlert('Invalid JSON data', 'warning');
+        return;
+    }
+    
+    fetch('/extensions/api/test-webhook', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            url: url,
+            test_data: testData
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Webhook test successful!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('testModal')).hide();
+        } else {
+            showAlert('Webhook test failed: ' + data.error, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Error testing webhook', 'danger');
+    });
+}
+
+function viewLogs() {
+    showAlert('System logs feature coming soon!', 'info');
+}
+
+function showAlert(message, type = 'info') {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alert, container.firstChild);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

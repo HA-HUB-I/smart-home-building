@@ -1,0 +1,1088 @@
+{% extends "base.html" %}
+
+{% block title %}Финансови Отчети{% endblock %}
+
+{% block extra_css %}
+<style>
+.report-card {
+    transition: transform 0.2s;
+    cursor: pointer;
+}
+
+.report-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.report-icon {
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin: 15px 0;
+}
+
+.stat-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+}
+
+.stat-card .card-body {
+    padding: 1.5rem;
+}
+
+.filter-section {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    margin-bottom: 1.5rem;
+}
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.summary-item {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 0.375rem;
+    border-left: 4px solid;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.summary-item.income {
+    border-left-color: #28a745;
+}
+
+.summary-item.expense {
+    border-left-color: #dc3545;
+}
+
+.summary-item.balance {
+    border-left-color: #17a2b8;
+}
+
+.summary-item.pending {
+    border-left-color: #ffc107;
+}
+
+@media print {
+    .no-print {
+        display: none !important;
+    }
+    
+    .container-fluid {
+        padding: 0;
+    }
+    
+    .card {
+        border: 1px solid #dee2e6 !important;
+        page-break-inside: avoid;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+                <div>
+                    <h2><i class="fas fa-chart-line me-2"></i>Финансови Отчети</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('finance.index') }}">Финанси</a></li>
+                            <li class="breadcrumb-item active">Отчети</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary me-2" onclick="exportReport()">
+                        <i class="fas fa-download me-1"></i>Експорт
+                    </button>
+                    <button class="btn btn-outline-info me-2" onclick="window.print()">
+                        <i class="fas fa-print me-1"></i>Печат
+                    </button>
+                    <button class="btn btn-success" onclick="scheduleReport()">
+                        <i class="fas fa-calendar me-1"></i>Планиране
+                    </button>
+                </div>
+            </div>
+
+            <!-- Report Type Selection -->
+            <div class="row mb-4 no-print">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Избор на Отчет</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3 mb-3" onclick="selectReportType('overview')">
+                                    <div class="card report-card text-center h-100" id="report-overview">
+                                        <div class="card-body">
+                                            <i class="fas fa-chart-pie report-icon text-primary"></i>
+                                            <h6>Общ Преглед</h6>
+                                            <p class="card-text small">Финансово състояние на сградата</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-3" onclick="selectReportType('expenses')">
+                                    <div class="card report-card text-center h-100" id="report-expenses">
+                                        <div class="card-body">
+                                            <i class="fas fa-chart-bar report-icon text-danger"></i>
+                                            <h6>Разходи</h6>
+                                            <p class="card-text small">Анализ на разходите по категории</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-3" onclick="selectReportType('payments')">
+                                    <div class="card report-card text-center h-100" id="report-payments">
+                                        <div class="card-body">
+                                            <i class="fas fa-chart-line report-icon text-success"></i>
+                                            <h6>Плащания</h6>
+                                            <p class="card-text small">Статистика на плащанията</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 mb-3" onclick="selectReportType('debts')">
+                                    <div class="card report-card text-center h-100" id="report-debts">
+                                        <div class="card-body">
+                                            <i class="fas fa-exclamation-triangle report-icon text-warning"></i>
+                                            <h6>Задължения</h6>
+                                            <p class="card-text small">Неплатени суми и просрочия</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-section no-print">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label for="buildingSelect" class="form-label">Сграда</label>
+                        <select class="form-select" id="buildingSelect" onchange="loadReport()">
+                            <option value="">Всички сгради</option>
+                            {% for building in buildings %}
+                            <option value="{{ building.id }}">{{ building.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="periodStart" class="form-label">От период</label>
+                        <input type="month" class="form-control" id="periodStart" onchange="loadReport()">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="periodEnd" class="form-label">До период</label>
+                        <input type="month" class="form-control" id="periodEnd" onchange="loadReport()">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="comparisonPeriod" class="form-label">Сравни с</label>
+                        <select class="form-select" id="comparisonPeriod" onchange="loadReport()">
+                            <option value="">Без сравнение</option>
+                            <option value="previous_month">Предишен месец</option>
+                            <option value="previous_year">Миналата година</option>
+                            <option value="previous_quarter">Предишно тримесечие</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Report Content -->
+            <div id="reportContent">
+                <!-- Overview Report -->
+                <div id="overviewReport" class="report-section" style="display: none;">
+                    <div class="summary-grid">
+                        <div class="summary-item income">
+                            <h4 id="totalIncome">0 лв.</h4>
+                            <div class="text-muted">Общи приходи</div>
+                            <div class="mt-2">
+                                <small class="text-success" id="incomeChange">+0%</small>
+                            </div>
+                        </div>
+                        <div class="summary-item expense">
+                            <h4 id="totalExpenses">0 лв.</h4>
+                            <div class="text-muted">Общи разходи</div>
+                            <div class="mt-2">
+                                <small class="text-danger" id="expensesChange">+0%</small>
+                            </div>
+                        </div>
+                        <div class="summary-item balance">
+                            <h4 id="netBalance">0 лв.</h4>
+                            <div class="text-muted">Нетен баланс</div>
+                            <div class="mt-2">
+                                <small class="text-info" id="balanceChange">+0%</small>
+                            </div>
+                        </div>
+                        <div class="summary-item pending">
+                            <h4 id="pendingPayments">0 лв.</h4>
+                            <div class="text-muted">Неплатени суми</div>
+                            <div class="mt-2">
+                                <small class="text-warning" id="pendingChange">+0%</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Разходи по Категории</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="expensesByCategoryChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Месечна Динамика</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="monthlyTrendsChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expenses Report -->
+                <div id="expensesReport" class="report-section" style="display: none;">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Детайлен Анализ на Разходите</h5>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary" onclick="changeExpensesView('chart')">Графика</button>
+                                        <button class="btn btn-outline-primary" onclick="changeExpensesView('table')">Таблица</button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="expensesChartView">
+                                        <div class="chart-container">
+                                            <canvas id="detailedExpensesChart"></canvas>
+                                        </div>
+                                    </div>
+                                    <div id="expensesTableView" style="display: none;">
+                                        <div class="table-responsive">
+                                            <table class="table table-striped" id="expensesTable">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Категория</th>
+                                                        <th>Общо</th>
+                                                        <th>Средно</th>
+                                                        <th>Минимум</th>
+                                                        <th>Максимум</th>
+                                                        <th>Процент</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    <!-- Data will be loaded here -->
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Топ 5 Категории</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="topCategoriesList">
+                                        <!-- Will be populated dynamically -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Разпределение по Апартаменти</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="unitDistributionChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payments Report -->
+                <div id="paymentsReport" class="report-section" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Плащания за Периода</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="paymentsChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Статистика</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Общо плащания:</span>
+                                            <strong id="totalPaymentsCount">0</strong>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Общо сума:</span>
+                                            <strong id="totalPaymentsAmount">0 лв.</strong>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <div class="d-flex justify-content-between">
+                                            <span>Средно плащане:</span>
+                                            <strong id="averagePayment">0 лв.</strong>
+                                        </div>
+                                    </div>
+                                    <hr>
+                                    <h6>По методи:</h6>
+                                    <div id="paymentMethods">
+                                        <!-- Will be populated -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Последни Плащания</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-sm" id="recentPaymentsTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Дата</th>
+                                                    <th>Апартамент</th>
+                                                    <th>Сума</th>
+                                                    <th>Метод</th>
+                                                    <th>Референция</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Data will be loaded -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Debts Report -->
+                <div id="debtsReport" class="report-section" style="display: none;">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card stat-card">
+                                <div class="card-body text-center">
+                                    <h3 id="totalDebt">0 лв.</h3>
+                                    <p class="mb-0">Общ дълг</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card stat-card">
+                                <div class="card-body text-center">
+                                    <h3 id="overdueDept">0 лв.</h3>
+                                    <p class="mb-0">Просрочени</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card stat-card">
+                                <div class="card-body text-center">
+                                    <h3 id="debtorsCount">0</h3>
+                                    <p class="mb-0">Длъжници</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-8">
+                            <div class="card">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0">Задължения по Апартаменти</h5>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-danger" onclick="filterDebts('all')">Всички</button>
+                                        <button class="btn btn-outline-warning" onclick="filterDebts('overdue')">Просрочени</button>
+                                        <button class="btn btn-outline-info" onclick="filterDebts('current')">Текущи</button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover" id="debtsTable">
+                                            <thead>
+                                                <tr>
+                                                    <th>Апартамент</th>
+                                                    <th>Собственик</th>
+                                                    <th>Дълг</th>
+                                                    <th>Просрочие</th>
+                                                    <th>Статус</th>
+                                                    <th>Действия</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <!-- Data will be loaded -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Анализ на Дълговете</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="chart-container">
+                                        <canvas id="debtsAnalysisChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty state -->
+                <div id="emptyReport" class="text-center py-5">
+                    <i class="fas fa-chart-bar fa-4x text-muted mb-3"></i>
+                    <h4 class="text-muted">Изберете тип отчет</h4>
+                    <p class="text-muted">Натиснете на една от картите по-горе за да видите отчета.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Modal -->
+<div class="modal fade" id="exportModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Експорт на Отчет</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="exportFormat" class="form-label">Формат</label>
+                    <select class="form-select" id="exportFormat">
+                        <option value="pdf">PDF</option>
+                        <option value="excel">Excel</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="includeCharts" checked>
+                        <label class="form-check-label" for="includeCharts">
+                            Включи графики
+                        </label>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="reportTitle" class="form-label">Заглавие на отчета</label>
+                    <input type="text" class="form-control" id="reportTitle" placeholder="Финансов отчет за...">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отказ</button>
+                <button type="button" class="btn btn-primary" onclick="executeExport()">Експорт</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Report Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Планиране на Отчет</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="scheduleFrequency" class="form-label">Честота</label>
+                    <select class="form-select" id="scheduleFrequency">
+                        <option value="monthly">Месечно</option>
+                        <option value="quarterly">Тримесечно</option>
+                        <option value="yearly">Годишно</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="scheduleEmail" class="form-label">Изпращане до</label>
+                    <input type="email" class="form-control" id="scheduleEmail" placeholder="email@example.com">
+                </div>
+                <div class="mb-3">
+                    <label for="scheduleDay" class="form-label">Ден от месеца</label>
+                    <select class="form-select" id="scheduleDay">
+                        <option value="1">1-ви</option>
+                        <option value="15">15-ти</option>
+                        <option value="last">Последен</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отказ</button>
+                <button type="button" class="btn btn-success" onclick="saveSchedule()">Запази</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let currentReportType = null;
+let reportData = {};
+let charts = {};
+
+// Initialize date filters
+document.addEventListener('DOMContentLoaded', function() {
+    const now = new Date();
+    const currentMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+    const startOfYear = now.getFullYear() + '-01';
+    
+    document.getElementById('periodStart').value = startOfYear;
+    document.getElementById('periodEnd').value = currentMonth;
+});
+
+function selectReportType(type) {
+    // Remove active class from all cards
+    document.querySelectorAll('.report-card').forEach(card => {
+        card.classList.remove('border-primary', 'bg-light');
+    });
+    
+    // Add active class to selected card
+    document.getElementById(`report-${type}`).classList.add('border-primary', 'bg-light');
+    
+    currentReportType = type;
+    loadReport();
+}
+
+function loadReport() {
+    if (!currentReportType) return;
+
+    const buildingId = document.getElementById('buildingSelect').value;
+    const periodStart = document.getElementById('periodStart').value;
+    const periodEnd = document.getElementById('periodEnd').value;
+    const comparison = document.getElementById('comparisonPeriod').value;
+
+    const params = new URLSearchParams({
+        type: currentReportType,
+        building_id: buildingId || '',
+        period_start: periodStart || '',
+        period_end: periodEnd || '',
+        comparison: comparison || ''
+    });
+
+    fetch(`/finance/api/reports?${params}`)
+        .then(response => response.json())
+        .then(data => {
+            reportData = data;
+            displayReport();
+        })
+        .catch(error => {
+            console.error('Error loading report:', error);
+            showAlert('Грешка при зареждане на отчета', 'danger');
+        });
+}
+
+function displayReport() {
+    // Hide all report sections
+    document.querySelectorAll('.report-section').forEach(section => {
+        section.style.display = 'none';
+    });
+    document.getElementById('emptyReport').style.display = 'none';
+
+    // Show the appropriate report section
+    const sectionId = currentReportType + 'Report';
+    document.getElementById(sectionId).style.display = 'block';
+
+    // Destroy existing charts
+    Object.values(charts).forEach(chart => chart.destroy());
+    charts = {};
+
+    // Load specific report data
+    switch (currentReportType) {
+        case 'overview':
+            displayOverviewReport();
+            break;
+        case 'expenses':
+            displayExpensesReport();
+            break;
+        case 'payments':
+            displayPaymentsReport();
+            break;
+        case 'debts':
+            displayDebtsReport();
+            break;
+    }
+}
+
+function displayOverviewReport() {
+    const data = reportData;
+    
+    // Update summary cards
+    document.getElementById('totalIncome').textContent = formatCurrency(data.total_income || 0);
+    document.getElementById('totalExpenses').textContent = formatCurrency(data.total_expenses || 0);
+    document.getElementById('netBalance').textContent = formatCurrency((data.total_income || 0) - (data.total_expenses || 0));
+    document.getElementById('pendingPayments').textContent = formatCurrency(data.pending_payments || 0);
+
+    // Update change indicators
+    if (data.comparison) {
+        document.getElementById('incomeChange').textContent = formatPercentage(data.comparison.income_change);
+        document.getElementById('expensesChange').textContent = formatPercentage(data.comparison.expenses_change);
+        document.getElementById('balanceChange').textContent = formatPercentage(data.comparison.balance_change);
+        document.getElementById('pendingChange').textContent = formatPercentage(data.comparison.pending_change);
+    }
+
+    // Create charts
+    createExpensesByCategoryChart(data.expenses_by_category || []);
+    createMonthlyTrendsChart(data.monthly_trends || []);
+}
+
+function displayExpensesReport() {
+    const data = reportData;
+    
+    createDetailedExpensesChart(data.expenses_detail || []);
+    updateExpensesTable(data.expenses_detail || []);
+    updateTopCategories(data.top_categories || []);
+    createUnitDistributionChart(data.unit_distribution || []);
+}
+
+function displayPaymentsReport() {
+    const data = reportData;
+    
+    createPaymentsChart(data.payments_timeline || []);
+    updatePaymentsStats(data.payments_stats || {});
+    updateRecentPaymentsTable(data.recent_payments || []);
+}
+
+function displayDebtsReport() {
+    const data = reportData;
+    
+    document.getElementById('totalDebt').textContent = formatCurrency(data.total_debt || 0);
+    document.getElementById('overdueDept').textContent = formatCurrency(data.overdue_debt || 0);
+    document.getElementById('debtorsCount').textContent = data.debtors_count || 0;
+    
+    updateDebtsTable(data.debts_detail || []);
+    createDebtsAnalysisChart(data.debts_analysis || []);
+}
+
+// Chart creation functions
+function createExpensesByCategoryChart(data) {
+    const ctx = document.getElementById('expensesByCategoryChart').getContext('2d');
+    charts.expensesByCategory = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.map(item => item.category),
+            datasets: [{
+                data: data.map(item => item.amount),
+                backgroundColor: [
+                    '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0',
+                    '#9966FF', '#FF9F40', '#FF6384', '#C9CBCF'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+function createMonthlyTrendsChart(data) {
+    const ctx = document.getElementById('monthlyTrendsChart').getContext('2d');
+    charts.monthlyTrends = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(item => item.month),
+            datasets: [{
+                label: 'Приходи',
+                data: data.map(item => item.income),
+                borderColor: '#28a745',
+                fill: false
+            }, {
+                label: 'Разходи',
+                data: data.map(item => item.expenses),
+                borderColor: '#dc3545',
+                fill: false
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function createDetailedExpensesChart(data) {
+    const ctx = document.getElementById('detailedExpensesChart').getContext('2d');
+    charts.detailedExpenses = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(item => item.category),
+            datasets: [{
+                label: 'Сума (лв.)',
+                data: data.map(item => item.total),
+                backgroundColor: '#36A2EB'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function createPaymentsChart(data) {
+    const ctx = document.getElementById('paymentsChart').getContext('2d');
+    charts.payments = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.map(item => item.date),
+            datasets: [{
+                label: 'Плащания (лв.)',
+                data: data.map(item => item.amount),
+                borderColor: '#28a745',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function createUnitDistributionChart(data) {
+    const ctx = document.getElementById('unitDistributionChart').getContext('2d');
+    charts.unitDistribution = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(item => `Ап. ${item.unit}`),
+            datasets: [{
+                label: 'Разходи (лв.)',
+                data: data.map(item => item.amount),
+                backgroundColor: '#FFCE56'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true
+                }
+            }
+        }
+    });
+}
+
+function createDebtsAnalysisChart(data) {
+    const ctx = document.getElementById('debtsAnalysisChart').getContext('2d');
+    charts.debtsAnalysis = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Текущи', 'Просрочени', 'Критични'],
+            datasets: [{
+                data: [
+                    data.current || 0,
+                    data.overdue || 0,
+                    data.critical || 0
+                ],
+                backgroundColor: ['#28a745', '#ffc107', '#dc3545']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Table update functions
+function updateExpensesTable(data) {
+    const tbody = document.querySelector('#expensesTable tbody');
+    tbody.innerHTML = data.map(item => `
+        <tr>
+            <td>${item.category}</td>
+            <td>${formatCurrency(item.total)}</td>
+            <td>${formatCurrency(item.average)}</td>
+            <td>${formatCurrency(item.min)}</td>
+            <td>${formatCurrency(item.max)}</td>
+            <td>${formatPercentage(item.percentage)}</td>
+        </tr>
+    `).join('');
+}
+
+function updateTopCategories(data) {
+    const container = document.getElementById('topCategoriesList');
+    container.innerHTML = data.map((item, index) => `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+                <span class="badge bg-primary me-2">${index + 1}</span>
+                ${item.name}
+            </div>
+            <strong>${formatCurrency(item.amount)}</strong>
+        </div>
+    `).join('');
+}
+
+function updatePaymentsStats(stats) {
+    document.getElementById('totalPaymentsCount').textContent = stats.count || 0;
+    document.getElementById('totalPaymentsAmount').textContent = formatCurrency(stats.total || 0);
+    document.getElementById('averagePayment').textContent = formatCurrency(stats.average || 0);
+    
+    const methodsContainer = document.getElementById('paymentMethods');
+    methodsContainer.innerHTML = Object.entries(stats.methods || {}).map(([method, amount]) => `
+        <div class="d-flex justify-content-between">
+            <span>${method}:</span>
+            <span>${formatCurrency(amount)}</span>
+        </div>
+    `).join('');
+}
+
+function updateRecentPaymentsTable(data) {
+    const tbody = document.querySelector('#recentPaymentsTable tbody');
+    tbody.innerHTML = data.map(item => `
+        <tr>
+            <td>${formatDate(item.date)}</td>
+            <td>Ап. ${item.unit}</td>
+            <td>${formatCurrency(item.amount)}</td>
+            <td>${item.method}</td>
+            <td>${item.reference || '-'}</td>
+        </tr>
+    `).join('');
+}
+
+function updateDebtsTable(data) {
+    const tbody = document.querySelector('#debtsTable tbody');
+    tbody.innerHTML = data.map(item => `
+        <tr class="debt-row ${item.is_overdue ? 'table-warning' : ''}">
+            <td>Ап. ${item.unit_number}</td>
+            <td>${item.owner_name}</td>
+            <td>${formatCurrency(item.debt_amount)}</td>
+            <td>${item.overdue_days || 0} дни</td>
+            <td>
+                <span class="badge bg-${item.is_overdue ? 'warning' : 'success'}">
+                    ${item.is_overdue ? 'Просрочено' : 'Текущо'}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="contactDebtor(${item.unit_id})">
+                    Контакт
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Utility functions
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('bg-BG', {
+        style: 'currency',
+        currency: 'BGN'
+    }).format(amount);
+}
+
+function formatPercentage(value) {
+    const sign = value >= 0 ? '+' : '';
+    return `${sign}${value.toFixed(1)}%`;
+}
+
+function formatDate(dateString) {
+    return new Date(dateString).toLocaleDateString('bg-BG');
+}
+
+// Export functions
+function exportReport() {
+    if (!currentReportType) {
+        showAlert('Моля, първо изберете тип отчет', 'warning');
+        return;
+    }
+    
+    new bootstrap.Modal(document.getElementById('exportModal')).show();
+}
+
+function executeExport() {
+    const format = document.getElementById('exportFormat').value;
+    const includeCharts = document.getElementById('includeCharts').checked;
+    const title = document.getElementById('reportTitle').value;
+
+    const params = new URLSearchParams({
+        type: currentReportType,
+        format: format,
+        include_charts: includeCharts,
+        title: title || '',
+        building_id: document.getElementById('buildingSelect').value || '',
+        period_start: document.getElementById('periodStart').value || '',
+        period_end: document.getElementById('periodEnd').value || ''
+    });
+
+    window.open(`/finance/api/reports/export?${params}`, '_blank');
+    bootstrap.Modal.getInstance(document.getElementById('exportModal')).hide();
+}
+
+function scheduleReport() {
+    new bootstrap.Modal(document.getElementById('scheduleModal')).show();
+}
+
+function saveSchedule() {
+    const frequency = document.getElementById('scheduleFrequency').value;
+    const email = document.getElementById('scheduleEmail').value;
+    const day = document.getElementById('scheduleDay').value;
+
+    if (!email) {
+        showAlert('Моля, въведете имейл адрес', 'warning');
+        return;
+    }
+
+    const scheduleData = {
+        type: currentReportType,
+        frequency: frequency,
+        email: email,
+        day: day,
+        building_id: document.getElementById('buildingSelect').value || null
+    };
+
+    fetch('/finance/api/reports/schedule', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(scheduleData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Отчетът е планиран успешно!', 'success');
+            bootstrap.Modal.getInstance(document.getElementById('scheduleModal')).hide();
+        } else {
+            showAlert('Грешка при планиране: ' + (data.error || 'Unknown error'), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Грешка при планиране на отчета', 'danger');
+    });
+}
+
+// View switching functions
+function changeExpensesView(view) {
+    if (view === 'chart') {
+        document.getElementById('expensesChartView').style.display = 'block';
+        document.getElementById('expensesTableView').style.display = 'none';
+    } else {
+        document.getElementById('expensesChartView').style.display = 'none';
+        document.getElementById('expensesTableView').style.display = 'block';
+    }
+}
+
+function filterDebts(filter) {
+    const rows = document.querySelectorAll('#debtsTable .debt-row');
+    rows.forEach(row => {
+        const isOverdue = row.classList.contains('table-warning');
+        let show = true;
+        
+        if (filter === 'overdue' && !isOverdue) show = false;
+        if (filter === 'current' && isOverdue) show = false;
+        
+        row.style.display = show ? '' : 'none';
+    });
+}
+
+function contactDebtor(unitId) {
+    // This would open a contact modal or redirect to contact page
+    showAlert('Функцията за контакт ще бъде добавена скоро', 'info');
+}
+
+function showAlert(message, type = 'info') {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alert, container.firstChild);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

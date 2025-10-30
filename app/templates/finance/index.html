@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Finance Dashboard{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-chart-line me-2"></i>Finance Dashboard</h2>
+            <p class="text-muted">Financial overview for {{ current_month_name }} {{ current_year }}</p>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('finance.expenses') }}" class="btn btn-outline-primary">
+                <i class="fas fa-receipt me-1"></i>Expenses
+            </a>
+            <a href="{{ url_for('finance.invoices') }}" class="btn btn-outline-info">
+                <i class="fas fa-file-invoice me-1"></i>Invoices
+            </a>
+            <a href="{{ url_for('finance.payments') }}" class="btn btn-outline-success">
+                <i class="fas fa-money-check me-1"></i>Payments
+            </a>
+            <a href="{{ url_for('finance.reports') }}" class="btn btn-outline-warning">
+                <i class="fas fa-chart-bar me-1"></i>Reports
+            </a>
+        </div>
+    </div>
+
+    {% if building_stats %}
+    <!-- Buildings Overview -->
+    <div class="row">
+        {% for stat in building_stats %}
+        <div class="col-md-6 col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="card-title mb-0">
+                            <a href="{{ url_for('finance.building_finance', building_id=stat.building.id) }}" 
+                               class="text-decoration-none">
+                                {{ stat.building.name }}
+                            </a>
+                        </h5>
+                        <span class="badge bg-secondary">{{ stat.units_count }} units</span>
+                    </div>
+                    <small class="text-muted">{{ stat.building.address_display }}</small>
+                </div>
+                <div class="card-body">
+                    <!-- Monthly Statistics -->
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h6 class="text-primary">Expenses</h6>
+                                <h5 class="text-primary mb-0">{{ "%.2f"|format(stat.monthly_expenses) }} лв.</h5>
+                                <small class="text-muted">This month</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="border-end">
+                                <h6 class="text-success">Paid</h6>
+                                <h5 class="text-success mb-0">{{ "%.2f"|format(stat.paid_amount) }} лв.</h5>
+                                <small class="text-muted">This month</small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <h6 class="text-danger">Unpaid</h6>
+                            <h5 class="text-danger mb-0">{{ "%.2f"|format(stat.unpaid_amount) }} лв.</h5>
+                            <small class="text-muted">Outstanding</small>
+                        </div>
+                    </div>
+
+                    <!-- Payment Rate -->
+                    <div class="mt-3">
+                        {% set total_expected = stat.monthly_expenses %}
+                        {% if total_expected > 0 %}
+                            {% set payment_rate = (stat.paid_amount / total_expected * 100) %}
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small">Payment Rate</span>
+                                <span class="small font-weight-bold">{{ "%.1f"|format(payment_rate) }}%</span>
+                            </div>
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar {% if payment_rate >= 80 %}bg-success{% elif payment_rate >= 50 %}bg-warning{% else %}bg-danger{% endif %}" 
+                                     role="progressbar" 
+                                     style="width: {{ payment_rate }}%"></div>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('finance.building_finance', building_id=stat.building.id) }}" 
+                           class="btn btn-sm btn-outline-primary flex-fill">
+                            <i class="fas fa-eye me-1"></i>Details
+                        </a>
+                        <a href="{{ url_for('finance.expenses', building_id=stat.building.id) }}" 
+                           class="btn btn-sm btn-outline-secondary">
+                            <i class="fas fa-receipt me-1"></i>Expenses
+                        </a>
+                        <a href="{{ url_for('finance.invoices', building_id=stat.building.id) }}" 
+                           class="btn btn-sm btn-outline-info">
+                            <i class="fas fa-file-invoice me-1"></i>Invoices
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('finance.new_expense') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-plus-circle me-2"></i>Add Expense
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('finance.new_payment') }}" class="btn btn-success w-100">
+                                <i class="fas fa-money-check-alt me-2"></i>Record Payment
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('finance.categories') }}" class="btn btn-info w-100">
+                                <i class="fas fa-tags me-2"></i>Manage Categories
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('finance.reports') }}" class="btn btn-warning w-100">
+                                <i class="fas fa-chart-line me-2"></i>View Reports
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- No Buildings Access -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="fas fa-building fa-3x text-muted mb-3"></i>
+                    <h4>No Financial Access</h4>
+                    <p class="text-muted">You don't have access to any buildings' financial data.</p>
+                    <p class="text-muted">Contact your building manager to get the appropriate permissions.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh dashboard every 5 minutes
+setTimeout(function() {
+    window.location.reload();
+}, 300000);
+
+// Tooltip initialization
+var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+    return new bootstrap.Tooltip(tooltipTriggerEl)
+});
+</script>
+{% endblock %}

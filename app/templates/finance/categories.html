@@ -1,0 +1,760 @@
+{% extends "base.html" %}
+
+{% block title %}Категории Разходи{% endblock %}
+
+{% block extra_css %}
+<style>
+.category-card {
+    transition: transform 0.2s;
+    border-left: 4px solid;
+}
+
+.category-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.category-card.shares {
+    border-left-color: #0d6efd;
+}
+
+.category-card.per_unit {
+    border-left-color: #28a745;
+}
+
+.category-card.per_person {
+    border-left-color: #ffc107;
+}
+
+.category-card.metered {
+    border-left-color: #dc3545;
+}
+
+.method-badge {
+    font-size: 0.75rem;
+}
+
+.usage-stats {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-tags me-2"></i>Категории Разходи</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('finance.index') }}">Финанси</a></li>
+                            <li class="breadcrumb-item active">Категории</li>
+                        </ol>
+                    </nav>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary me-2" onclick="importCategories()">
+                        <i class="fas fa-download me-1"></i>Импорт
+                    </button>
+                    <a href="{{ url_for('finance.new_category') }}" class="btn btn-success">
+                        <i class="fas fa-plus me-1"></i>Нова Категория
+                    </a>
+                </div>
+            </div>
+
+            <!-- Building Selection -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-building me-2"></i>Избор на Сграда</h5>
+                        </div>
+                        <div class="card-body">
+                            <select class="form-select" id="buildingSelect" onchange="loadCategories()">
+                                <option value="">Изберете сграда...</option>
+                                {% for building in buildings %}
+                                <option value="{{ building.id }}">{{ building.name }} - {{ building.address.street }} {{ building.address.number }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Статистики</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <h4 class="text-primary mb-0" id="totalCategories">0</h4>
+                                    <small class="text-muted">Категории</small>
+                                </div>
+                                <div class="col-6">
+                                    <h4 class="text-success mb-0" id="activeCategories">0</h4>
+                                    <small class="text-muted">Активни</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Categories List -->
+            <div id="categoriesContainer" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4><i class="fas fa-list me-2"></i>Категории за Избраната Сграда</h4>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="categoryFilter" id="allCategories" value="all" checked>
+                        <label class="btn btn-outline-primary" for="allCategories">Всички</label>
+                        
+                        <input type="radio" class="btn-check" name="categoryFilter" id="activeCategories" value="active">
+                        <label class="btn btn-outline-success" for="activeCategories">Активни</label>
+                        
+                        <input type="radio" class="btn-check" name="categoryFilter" id="inactiveCategories" value="inactive">
+                        <label class="btn btn-outline-secondary" for="inactiveCategories">Неактивни</label>
+                    </div>
+                </div>
+
+                <div class="row" id="categoriesList">
+                    <!-- Categories will be loaded here -->
+                </div>
+                
+                <div id="noCategories" class="text-center py-5" style="display: none;">
+                    <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">Няма категории</h5>
+                    <p class="text-muted">Създайте първата категория за тази сграда.</p>
+                    <button class="btn btn-success" onclick="showCreateModal()">
+                        <i class="fas fa-plus me-1"></i>Създай Първа Категория
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Create/Edit Category Modal -->
+<div class="modal fade" id="categoryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="categoryModalTitle">Нова Категория</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="categoryForm">
+                    <input type="hidden" id="categoryId" value="">
+                    <input type="hidden" id="categoryBuildingId" value="">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="categoryCode" class="form-label">Код на Категория</label>
+                                <input type="text" class="form-control" id="categoryCode" placeholder="напр. cleaning" required>
+                                <div class="form-text">Уникален код, само латински букви и подчертавки</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="categoryName" class="form-label">Име на Категория</label>
+                                <input type="text" class="form-control" id="categoryName" placeholder="напр. Почистване" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="allocationMethod" class="form-label">Метод на Разпределение</label>
+                                <select class="form-select" id="allocationMethod" onchange="updateMethodDescription()" required>
+                                    <option value="">Изберете метод...</option>
+                                    <option value="shares">По идеални части</option>
+                                    <option value="per_unit">Еднакво за всички</option>
+                                    <option value="per_person">По брой живущи</option>
+                                    <option value="metered">По показания</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <div class="form-check form-switch mt-4">
+                                    <input class="form-check-input" type="checkbox" id="categoryActive" checked>
+                                    <label class="form-check-label" for="categoryActive">
+                                        Активна категория
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="categoryDescription" class="form-label">Описание (незадължително)</label>
+                        <textarea class="form-control" id="categoryDescription" rows="2" placeholder="Кратко описание на категорията"></textarea>
+                    </div>
+
+                    <div id="methodDescription" class="alert alert-info" style="display: none;">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <span id="methodDescriptionText"></span>
+                    </div>
+
+                    <!-- Advanced Settings -->
+                    <div class="accordion mt-3">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advancedSettings">
+                                    Разширени Настройки
+                                </button>
+                            </h2>
+                            <div id="advancedSettings" class="accordion-collapse collapse">
+                                <div class="accordion-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="defaultAmount" class="form-label">Стандартна Сума (лв.)</label>
+                                                <input type="number" class="form-control" id="defaultAmount" step="0.01" min="0">
+                                                <div class="form-text">Подразбираща се сума при създаване на разход</div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="mb-3">
+                                                <label for="categoryOrder" class="form-label">Подредба</label>
+                                                <input type="number" class="form-control" id="categoryOrder" min="1" value="1">
+                                                <div class="form-text">Ред на показване в списъците</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="categorySettings" class="form-label">JSON Настройки</label>
+                                        <textarea class="form-control font-monospace" id="categorySettings" rows="4" placeholder='{"example": "value"}'></textarea>
+                                        <div class="form-text">Допълнителни настройки в JSON формат</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отказ</button>
+                <button type="button" class="btn btn-primary" onclick="saveCategory()">
+                    <i class="fas fa-save me-1"></i>Запази
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import Categories Modal -->
+<div class="modal fade" id="importModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Импорт на Категории</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label for="importMethod" class="form-label">Метод на Импорт</label>
+                    <select class="form-select" id="importMethod" onchange="updateImportMethod()">
+                        <option value="">Изберете метод...</option>
+                        <option value="template">От друга сграда</option>
+                        <option value="file">CSV файл</option>
+                        <option value="standard">Стандартни категории</option>
+                    </select>
+                </div>
+
+                <div id="importFromBuilding" style="display: none;">
+                    <div class="mb-3">
+                        <label for="sourceBuildingId" class="form-label">Изходна Сграда</label>
+                        <select class="form-select" id="sourceBuildingId">
+                            <option value="">Изберете сграда...</option>
+                            {% for building in buildings %}
+                            <option value="{{ building.id }}">{{ building.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div id="importFromFile" style="display: none;">
+                    <div class="mb-3">
+                        <label for="categoryFile" class="form-label">CSV Файл</label>
+                        <input class="form-control" type="file" id="categoryFile" accept=".csv">
+                        <div class="form-text">Файлът трябва да съдържа: код, име, метод_разпределение, описание</div>
+                    </div>
+                </div>
+
+                <div id="importStandard" style="display: none;">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Ще бъдат импортирани стандартни категории за жилищна сграда:
+                        <ul class="mt-2 mb-0">
+                            <li>Почистване (еднакво за всички)</li>
+                            <li>Лифт (еднакво за всички)</li>
+                            <li>Ремонти (по идеални части)</li>
+                            <li>Озеленяване (по идеални части)</li>
+                            <li>Охрана (по идеални части)</li>
+                            <li>Вода (по показания)</li>
+                            <li>Ток (по показания)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отказ</button>
+                <button type="button" class="btn btn-primary" onclick="executeImport()">
+                    <i class="fas fa-download me-1"></i>Импортирай
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let categories = [];
+let selectedBuildingId = null;
+
+function showCreateModal() {
+    const buildingSelect = document.getElementById('buildingSelect');
+    if (!buildingSelect.value) {
+        showAlert('Моля, първо изберете сграда', 'warning');
+        return;
+    }
+
+    document.getElementById('categoryModalTitle').textContent = 'Нова Категория';
+    document.getElementById('categoryForm').reset();
+    document.getElementById('categoryId').value = '';
+    document.getElementById('categoryBuildingId').value = buildingSelect.value;
+    document.getElementById('categoryActive').checked = true;
+    document.getElementById('methodDescription').style.display = 'none';
+    
+    new bootstrap.Modal(document.getElementById('categoryModal')).show();
+}
+
+function loadCategories() {
+    const buildingId = document.getElementById('buildingSelect').value;
+    selectedBuildingId = buildingId;
+    
+    if (!buildingId) {
+        document.getElementById('categoriesContainer').style.display = 'none';
+        document.getElementById('totalCategories').textContent = '0';
+        document.getElementById('activeCategories').textContent = '0';
+        return;
+    }
+
+    // Show container
+    document.getElementById('categoriesContainer').style.display = 'block';
+
+    fetch(`/finance/api/categories/${buildingId}`)
+        .then(response => response.json())
+        .then(data => {
+            categories = data.categories || [];
+            updateCategoryStats();
+            displayCategories(categories);
+        })
+        .catch(error => {
+            console.error('Error loading categories:', error);
+            showAlert('Грешка при зареждане на категориите', 'danger');
+        });
+}
+
+function updateCategoryStats() {
+    const total = categories.length;
+    const active = categories.filter(c => c.is_active !== false).length;
+    
+    document.getElementById('totalCategories').textContent = total;
+    document.getElementById('activeCategories').textContent = active;
+}
+
+function displayCategories(categoriesToShow) {
+    const container = document.getElementById('categoriesList');
+    const noCategories = document.getElementById('noCategories');
+
+    if (categoriesToShow.length === 0) {
+        container.innerHTML = '';
+        noCategories.style.display = 'block';
+        return;
+    }
+
+    noCategories.style.display = 'none';
+
+    container.innerHTML = categoriesToShow.map(category => {
+        const methodNames = {
+            'shares': 'По идеални части',
+            'per_unit': 'Еднакво за всички',
+            'per_person': 'По брой живущи',
+            'metered': 'По показания'
+        };
+
+        const methodColors = {
+            'shares': 'primary',
+            'per_unit': 'success', 
+            'per_person': 'warning',
+            'metered': 'danger'
+        };
+
+        return `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="card category-card ${category.allocation_method}">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-0">${category.name}</h6>
+                            <small class="text-muted">${category.code}</small>
+                        </div>
+                        <span class="badge bg-${methodColors[category.allocation_method]} method-badge">
+                            ${methodNames[category.allocation_method]}
+                        </span>
+                    </div>
+                    <div class="card-body">
+                        ${category.description ? `
+                            <p class="card-text small">${category.description}</p>
+                        ` : ''}
+                        
+                        <div class="usage-stats">
+                            <div class="d-flex justify-content-between">
+                                <span>Използвания:</span>
+                                <span>${category.usage_count || 0}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Последно:</span>
+                                <span>${category.last_used || 'Никога'}</span>
+                            </div>
+                            <div class="d-flex justify-content-between">
+                                <span>Статус:</span>
+                                <span class="badge bg-${category.is_active !== false ? 'success' : 'secondary'}">
+                                    ${category.is_active !== false ? 'Активна' : 'Неактивна'}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-footer d-flex justify-content-between">
+                        <button class="btn btn-sm btn-outline-primary" onclick="editCategory(${category.id})">
+                            <i class="fas fa-edit me-1"></i>Редактирай
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                Действия
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="duplicateCategory(${category.id})">
+                                    <i class="fas fa-copy me-1"></i>Дублирай
+                                </a></li>
+                                <li><a class="dropdown-item" href="#" onclick="toggleCategoryStatus(${category.id})">
+                                    <i class="fas fa-${category.is_active !== false ? 'pause' : 'play'} me-1"></i>
+                                    ${category.is_active !== false ? 'Деактивирай' : 'Активирай'}
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="deleteCategory(${category.id})">
+                                    <i class="fas fa-trash me-1"></i>Изтрий
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function updateMethodDescription() {
+    const method = document.getElementById('allocationMethod').value;
+    const description = document.getElementById('methodDescription');
+    const text = document.getElementById('methodDescriptionText');
+
+    const descriptions = {
+        'shares': 'Разходът ще се разпределя пропорционално на идеалните части на всеки апартамент.',
+        'per_unit': 'Разходът ще се разделя еднакво между всички апартаменти в сградата.',
+        'per_person': 'Разходът ще се разпределя според броя на обитателите в всеки апартамент.',
+        'metered': 'Разходът ще се разпределя според показанията на индивидуални измервателни уреди.'
+    };
+
+    if (method && descriptions[method]) {
+        text.textContent = descriptions[method];
+        description.style.display = 'block';
+    } else {
+        description.style.display = 'none';
+    }
+}
+
+function saveCategory() {
+    const id = document.getElementById('categoryId').value;
+    const buildingId = document.getElementById('categoryBuildingId').value;
+    const code = document.getElementById('categoryCode').value;
+    const name = document.getElementById('categoryName').value;
+    const method = document.getElementById('allocationMethod').value;
+    
+    if (!code || !name || !method) {
+        showAlert('Моля, попълнете всички задължителни полета', 'warning');
+        return;
+    }
+
+    const categoryData = {
+        building_id: parseInt(buildingId),
+        code: code,
+        name: name,
+        allocation_method: method,
+        description: document.getElementById('categoryDescription').value,
+        is_active: document.getElementById('categoryActive').checked,
+        settings: {}
+    };
+
+    // Add advanced settings
+    const defaultAmount = document.getElementById('defaultAmount').value;
+    const order = document.getElementById('categoryOrder').value;
+    const settings = document.getElementById('categorySettings').value;
+
+    if (defaultAmount) categoryData.settings.default_amount = parseFloat(defaultAmount);
+    if (order) categoryData.settings.order = parseInt(order);
+    if (settings) {
+        try {
+            categoryData.settings = {...categoryData.settings, ...JSON.parse(settings)};
+        } catch (e) {
+            showAlert('Невалиден JSON в настройките', 'warning');
+            return;
+        }
+    }
+
+    const url = id ? `/finance/api/categories/${id}` : '/finance/api/categories';
+    const method_http = id ? 'PUT' : 'POST';
+
+    fetch(url, {
+        method: method_http,
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(categoryData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('categoryModal')).hide();
+            showAlert(id ? 'Категорията е обновена успешно!' : 'Категорията е създадена успешно!', 'success');
+            loadCategories(); // Reload the list
+        } else {
+            showAlert('Грешка при запазване: ' + (data.error || 'Unknown error'), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Грешка при запазване на категорията', 'danger');
+    });
+}
+
+function editCategory(categoryId) {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) return;
+
+    document.getElementById('categoryModalTitle').textContent = 'Редактиране на Категория';
+    document.getElementById('categoryId').value = category.id;
+    document.getElementById('categoryBuildingId').value = category.building_id;
+    document.getElementById('categoryCode').value = category.code;
+    document.getElementById('categoryName').value = category.name;
+    document.getElementById('allocationMethod').value = category.allocation_method;
+    document.getElementById('categoryDescription').value = category.description || '';
+    document.getElementById('categoryActive').checked = category.is_active !== false;
+
+    // Advanced settings
+    if (category.settings) {
+        document.getElementById('defaultAmount').value = category.settings.default_amount || '';
+        document.getElementById('categoryOrder').value = category.settings.order || '';
+        document.getElementById('categorySettings').value = JSON.stringify(category.settings, null, 2);
+    }
+
+    updateMethodDescription();
+    new bootstrap.Modal(document.getElementById('categoryModal')).show();
+}
+
+function duplicateCategory(categoryId) {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) return;
+
+    // Open create modal with pre-filled data
+    document.getElementById('categoryModalTitle').textContent = 'Дублиране на Категория';
+    document.getElementById('categoryId').value = '';
+    document.getElementById('categoryBuildingId').value = category.building_id;
+    document.getElementById('categoryCode').value = category.code + '_copy';
+    document.getElementById('categoryName').value = category.name + ' (копие)';
+    document.getElementById('allocationMethod').value = category.allocation_method;
+    document.getElementById('categoryDescription').value = category.description || '';
+    document.getElementById('categoryActive').checked = true;
+
+    updateMethodDescription();
+    new bootstrap.Modal(document.getElementById('categoryModal')).show();
+}
+
+function toggleCategoryStatus(categoryId) {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) return;
+
+    const newStatus = !(category.is_active !== false);
+    
+    fetch(`/finance/api/categories/${categoryId}`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            ...category,
+            is_active: newStatus
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert(`Категорията е ${newStatus ? 'активирана' : 'деактивирана'} успешно!`, 'success');
+            loadCategories();
+        } else {
+            showAlert('Грешка при промяна на статуса', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Грешка при промяна на статуса', 'danger');
+    });
+}
+
+function deleteCategory(categoryId) {
+    const category = categories.find(c => c.id === categoryId);
+    if (!category) return;
+
+    if (!confirm(`Сигурни ли сте, че искате да изтриете категорията "${category.name}"?\n\nТова действие е необратимо и може да засегне съществуващи разходи.`)) {
+        return;
+    }
+
+    fetch(`/finance/api/categories/${categoryId}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Категорията е изтрита успешно!', 'success');
+            loadCategories();
+        } else {
+            showAlert('Грешка при изтриване: ' + (data.error || 'Unknown error'), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Грешка при изтриване на категорията', 'danger');
+    });
+}
+
+function importCategories() {
+    const buildingSelect = document.getElementById('buildingSelect');
+    if (!buildingSelect.value) {
+        showAlert('Моля, първо изберете сграда', 'warning');
+        return;
+    }
+
+    document.getElementById('categoryBuildingId').value = buildingSelect.value;
+    new bootstrap.Modal(document.getElementById('importModal')).show();
+}
+
+function updateImportMethod() {
+    const method = document.getElementById('importMethod').value;
+    
+    // Hide all import sections
+    document.getElementById('importFromBuilding').style.display = 'none';
+    document.getElementById('importFromFile').style.display = 'none';
+    document.getElementById('importStandard').style.display = 'none';
+    
+    // Show relevant section
+    if (method === 'template') {
+        document.getElementById('importFromBuilding').style.display = 'block';
+    } else if (method === 'file') {
+        document.getElementById('importFromFile').style.display = 'block';
+    } else if (method === 'standard') {
+        document.getElementById('importStandard').style.display = 'block';
+    }
+}
+
+function executeImport() {
+    const method = document.getElementById('importMethod').value;
+    const buildingId = selectedBuildingId;
+
+    if (!method) {
+        showAlert('Моля, изберете метод на импорт', 'warning');
+        return;
+    }
+
+    let importData = { method: method, building_id: buildingId };
+
+    if (method === 'template') {
+        const sourceId = document.getElementById('sourceBuildingId').value;
+        if (!sourceId) {
+            showAlert('Моля, изберете изходна сграда', 'warning');
+            return;
+        }
+        importData.source_building_id = sourceId;
+    } else if (method === 'file') {
+        const file = document.getElementById('categoryFile').files[0];
+        if (!file) {
+            showAlert('Моля, изберете файл', 'warning');
+            return;
+        }
+        // TODO: Handle file upload
+        showAlert('Импорт от файл ще бъде добавен скоро', 'info');
+        return;
+    }
+
+    fetch('/finance/api/categories/import', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(importData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('importModal')).hide();
+            showAlert(`Импортирани са ${data.imported_count} категории успешно!`, 'success');
+            loadCategories();
+        } else {
+            showAlert('Грешка при импорт: ' + (data.error || 'Unknown error'), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Грешка при импорт на категориите', 'danger');
+    });
+}
+
+// Filter categories
+document.querySelectorAll('input[name="categoryFilter"]').forEach(radio => {
+    radio.addEventListener('change', function() {
+        const filter = this.value;
+        let filtered = categories;
+        
+        if (filter === 'active') {
+            filtered = categories.filter(c => c.is_active !== false);
+        } else if (filter === 'inactive') {
+            filtered = categories.filter(c => c.is_active === false);
+        }
+        
+        displayCategories(filtered);
+    });
+});
+
+function showAlert(message, type = 'info') {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alert, container.firstChild);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+</script>
+{% endblock %}

@@ -1,0 +1,817 @@
+{% extends "base.html" %}
+
+{% block title %}Нова Категория Разходи{% endblock %}
+
+{% block extra_css %}
+<style>
+.method-card {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 2px solid transparent;
+    position: relative;
+}
+
+.method-card:hover {
+    border-color: #0d6efd;
+    transform: translateY(-2px);
+}
+
+.method-card.selected {
+    border-color: #0d6efd;
+    background-color: #e7f3ff;
+    box-shadow: 0 4px 8px rgba(13, 110, 253, 0.2);
+}
+
+.method-card.selected::after {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: #0d6efd;
+    font-weight: bold;
+    font-size: 1.2rem;
+}
+
+.method-description {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.preview-section {
+    background: #f8f9fa;
+    border: 1px dashed #dee2e6;
+    border-radius: 0.375rem;
+    padding: 1rem;
+}
+
+.code-preview {
+    font-family: monospace;
+    background: #e9ecef;
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.25rem;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h2><i class="fas fa-plus-circle me-2"></i>Създаване на Нова Категория</h2>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{{ url_for('finance.index') }}">Финанси</a></li>
+                            <li class="breadcrumb-item"><a href="{{ url_for('finance.categories') }}">Категории</a></li>
+                            <li class="breadcrumb-item active">Нова</li>
+                        </ol>
+                    </nav>
+                </div>
+                <a href="{{ url_for('finance.categories') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Назад към Категории
+                </a>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-tag me-2"></i>Основни Данни</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" id="categoryForm">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token else '' }}"/>
+                                
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="building_id" class="form-label">Сграда *</label>
+                                            <select name="building_id" id="building_id" class="form-select" required>
+                                                <option value="">Изберете сграда...</option>
+                                                {% for building in buildings %}
+                                                <option value="{{ building.id }}"
+                                                    {% if request.args.get('building_id')|int == building.id %}selected{% endif %}>
+                                                    {{ building.name }} - {{ building.address.street }} {{ building.address.number }}
+                                                </option>
+                                                {% endfor %}
+                                            </select>
+                                            <!-- Hidden field for allocation method -->
+                                            <input type="hidden" name="allocation_method" id="allocation_method_hidden">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="code" class="form-label">Код на Категория *</label>
+                                            <input type="text" name="code" id="code" class="form-control" 
+                                                   placeholder="напр. cleaning" 
+                                                   pattern="[a-z_]+" 
+                                                   onchange="updateCodePreview()"
+                                                   required>
+                                            <div class="form-text">Само малки латински букви и подчертавки (_)</div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Quick Templates -->
+                                <div class="mb-4">
+                                    <label class="form-label">Готови Шаблони</label>
+                                    <div class="form-text mb-2">Изберете готов шаблон или създайте категория от нула</div>
+                                    <div class="row">
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick="applyTemplate('cleaning')">
+                                                <i class="fas fa-broom me-1"></i>Почистване
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-success btn-sm w-100" onclick="applyTemplate('lift')">
+                                                <i class="fas fa-elevator me-1"></i>Асансьор
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-warning btn-sm w-100" onclick="applyTemplate('repair_fund')">
+                                                <i class="fas fa-tools me-1"></i>Фонд Ремонт
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-info btn-sm w-100" onclick="applyTemplate('electricity')">
+                                                <i class="fas fa-bolt me-1"></i>Ток
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-danger btn-sm w-100" onclick="applyTemplate('water')">
+                                                <i class="fas fa-tint me-1"></i>Вода
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="applyTemplate('heating')">
+                                                <i class="fas fa-fire me-1"></i>Отопление
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-dark btn-sm w-100" onclick="applyTemplate('security')">
+                                                <i class="fas fa-shield-alt me-1"></i>Охрана
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-light btn-sm w-100 text-dark" onclick="applyTemplate('insurance')">
+                                                <i class="fas fa-umbrella me-1"></i>Застраховка
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm w-100" onclick="applyTemplate('maintenance')">
+                                                <i class="fas fa-wrench me-1"></i>Поддръжка
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-success btn-sm w-100" onclick="applyTemplate('garbage')">
+                                                <i class="fas fa-trash me-1"></i>Боклук
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-info btn-sm w-100" onclick="applyTemplate('internet')">
+                                                <i class="fas fa-wifi me-1"></i>Интернет
+                                            </button>
+                                        </div>
+                                        <div class="col-md-3 mb-2">
+                                            <button type="button" class="btn btn-outline-warning btn-sm w-100" onclick="applyTemplate('lighting')">
+                                                <i class="fas fa-lightbulb me-1"></i>Осветление
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="name" class="form-label">Име на Категория *</label>
+                                            <input type="text" name="name" id="name" class="form-control" 
+                                                   placeholder="напр. Почистване" 
+                                                   onchange="updateCodePreview()"
+                                                   required>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <div class="form-check form-switch mt-4">
+                                                <input class="form-check-input" type="checkbox" name="is_active" id="is_active" checked>
+                                                <label class="form-check-label" for="is_active">
+                                                    Активна категория
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="description" class="form-label">Описание</label>
+                                    <textarea name="description" id="description" class="form-control" rows="2" 
+                                              placeholder="Кратко описание на категорията (незадължително)"></textarea>
+                                </div>
+
+                                <!-- Allocation Method Selection -->
+                                <div class="mb-4">
+                                    <label class="form-label">Метод на Разпределение2 * 
+                                        <span id="methodDebug" class="small text-muted"></span>
+                                    </label>
+                                    <div class="alert alert-info small" style="display: none;" id="methodHint">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Кликнете върху една от картите за да изберете метод на разпределение
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card method-card" data-method="shares">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-chart-pie fa-2x text-primary mb-2"></i>
+                                                    <h6>По идеални части</h6>
+                                                    <p class="method-description mb-0">
+                                                        Разходът се разпределя пропорционално на идеалните части на всеки апартамент
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card method-card" data-method="per_unit">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-equals fa-2x text-success mb-2"></i>
+                                                    <h6>Еднакво за всички</h6>
+                                                    <p class="method-description mb-0">
+                                                        Разходът се разделя еднакво между всички апартаменти в сградата
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card method-card" data-method="per_person">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-users fa-2x text-warning mb-2"></i>
+                                                    <h6>По брой живущи</h6>
+                                                    <p class="method-description mb-0">
+                                                        Разходът се разпределя според броя на обитателите в всеки апартамент
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <div class="card method-card" data-method="metered">
+                                                <div class="card-body text-center">
+                                                    <i class="fas fa-tachometer-alt fa-2x text-danger mb-2"></i>
+                                                    <h6>По показания</h6>
+                                                    <p class="method-description mb-0">
+                                                        Разходът се разпределя според показанията на индивидуални измервателни уреди
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Advanced Settings -->
+                                <div class="accordion">
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#advancedSettings">
+                                                <i class="fas fa-cog me-2"></i>Разширени Настройки
+                                            </button>
+                                        </h2>
+                                        <div id="advancedSettings" class="accordion-collapse collapse">
+                                            <div class="accordion-body">
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <label for="default_amount" class="form-label">Стандартна Сума (лв.)</label>
+                                                            <input type="number" name="default_amount" id="default_amount" class="form-control" step="0.01" min="0">
+                                                            <div class="form-text">Подразбираща се сума при създаване на разход</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="mb-3">
+                                                            <label for="sort_order" class="form-label">Подредба</label>
+                                                            <input type="number" name="sort_order" id="sort_order" class="form-control" min="1" value="1">
+                                                            <div class="form-text">Ред на показване в списъците</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                
+                                                <div class="row">
+                                                    <div class="col-md-6">
+                                                        <div class="form-check mb-3">
+                                                            <input class="form-check-input" type="checkbox" name="auto_generate" id="auto_generate">
+                                                            <label class="form-check-label" for="auto_generate">
+                                                                Автоматично генериране
+                                                            </label>
+                                                            <div class="form-text">Автоматично създаване на разходи всеки месец</div>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-6">
+                                                        <div class="form-check mb-3">
+                                                            <input class="form-check-input" type="checkbox" name="notifications" id="notifications" checked>
+                                                            <label class="form-check-label" for="notifications">
+                                                                Известия
+                                                            </label>
+                                                            <div class="form-text">Изпращане на известия при създаване на разходи</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div class="mb-3">
+                                                    <label for="custom_settings" class="form-label">Допълнителни Настройки (JSON)</label>
+                                                    <textarea name="custom_settings" id="custom_settings" class="form-control font-monospace" rows="4" 
+                                                              placeholder='{"example": "value"}'></textarea>
+                                                    <div class="form-text">Допълнителни настройки в JSON формат (незадължително)</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between mt-4">
+                                    <button type="button" class="btn btn-outline-info" onclick="previewCategory()">
+                                        <i class="fas fa-eye me-1"></i>Преглед
+                                    </button>
+                                    <div>
+                                        <button type="button" class="btn btn-secondary me-2" onclick="resetForm()">
+                                            <i class="fas fa-undo me-1"></i>Изчисти
+                                        </button>
+                                        <button type="submit" class="btn btn-success">
+                                            <i class="fas fa-check me-1"></i>Създай Категория
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <!-- Category Preview -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-eye me-2"></i>Преглед на Категорията</h6>
+                        </div>
+                        <div class="card-body">
+                            <div id="categoryPreview" class="preview-section">
+                                <div class="text-center text-muted py-3">
+                                    <i class="fas fa-tag fa-2x mb-2"></i>
+                                    <p class="mb-0">Попълнете полетата за преглед на категорията</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Templates -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-rocket me-2"></i>Бързи Шаблони</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="d-grid gap-2">
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyTemplate('cleaning')">
+                                    <i class="fas fa-broom me-1"></i>Почистване
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyTemplate('lift')">
+                                    <i class="fas fa-elevator me-1"></i>Лифт
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyTemplate('repairs')">
+                                    <i class="fas fa-tools me-1"></i>Ремонти
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyTemplate('security')">
+                                    <i class="fas fa-shield-alt me-1"></i>Охрана
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyTemplate('water')">
+                                    <i class="fas fa-tint me-1"></i>Вода
+                                </button>
+                                <button type="button" class="btn btn-outline-primary btn-sm" onclick="applyTemplate('electricity')">
+                                    <i class="fas fa-bolt me-1"></i>Електричество
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Help -->
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="mb-0"><i class="fas fa-question-circle me-2"></i>Помощ</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="small">
+                                <p><strong>Кодът на категорията</strong> трябва да бъде уникален за сградата и да съдържа само малки латински букви и подчертавки.</p>
+                                <p><strong>Методът на разпределение</strong> определя как разходите ще се разпределят между апартаментите.</p>
+                                <p><strong>Разширените настройки</strong> позволяват допълнителна конфигурация за автоматизация и персонализиране.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedMethod = null;
+
+// Templates for common categories
+const templates = {
+    cleaning: {
+        code: 'cleaning',
+        name: 'Почистване',
+        description: 'Почистване на общи части на сградата',
+        allocation_method: 'per_unit'
+    },
+    lift: {
+        code: 'lift',
+        name: 'Асансьор',
+        description: 'Поддръжка и ремонт на асансьор',
+        allocation_method: 'per_unit'
+    },
+    repair_fund: {
+        code: 'repair_fund',
+        name: 'Фонд Ремонт',
+        description: 'Средства за капитални ремонти',
+        allocation_method: 'shares'
+    },
+    electricity: {
+        code: 'electricity',
+        name: 'Електричество',
+        description: 'Разходи за електричество',
+        allocation_method: 'metered'
+    },
+    water: {
+        code: 'water',
+        name: 'Вода',
+        description: 'Разходи за водоснабдяване',
+        allocation_method: 'metered'
+    },
+    heating: {
+        code: 'heating',
+        name: 'Отопление',
+        description: 'Разходи за отопление',
+        allocation_method: 'metered'
+    },
+    security: {
+        code: 'security',
+        name: 'Охрана',
+        description: 'Охрана на сградата',
+        allocation_method: 'per_unit'
+    },
+    insurance: {
+        code: 'insurance',
+        name: 'Застраховка',
+        description: 'Застрахователни премии',
+        allocation_method: 'shares'
+    },
+    maintenance: {
+        code: 'maintenance',
+        name: 'Поддръжка',
+        description: 'Обща поддръжка на сградата',
+        allocation_method: 'shares'
+    },
+    garbage: {
+        code: 'garbage',
+        name: 'Боклук',
+        description: 'Такси за сметосъбиране',
+        allocation_method: 'per_unit'
+    },
+    internet: {
+        code: 'internet',
+        name: 'Интернет',
+        description: 'Интернет в общи части',
+        allocation_method: 'per_unit'
+    },
+    lighting: {
+        code: 'lighting',
+        name: 'Осветление',
+        description: 'Осветление на общи части',
+        allocation_method: 'per_unit'
+    }
+};
+
+function selectMethod(method) {
+    console.log('selectMethod called with:', method);
+    
+    // Remove selected class from all cards
+    document.querySelectorAll('.method-card').forEach(card => {
+        card.classList.remove('selected');
+        card.setAttribute('aria-pressed', 'false');
+    });
+    
+    // Find the card with the method
+    const targetCard = document.querySelector(`[data-method="${method}"]`);
+    console.log('Target card found:', targetCard);
+    
+    if (targetCard) {
+        // Add selected class to clicked card
+        targetCard.classList.add('selected');
+        targetCard.setAttribute('aria-pressed', 'true');
+        console.log('Added selected class to card');
+    }
+    
+    // Check the radio button (removed - no longer using radio buttons)
+    
+    // Update hidden field
+    const hiddenField = document.getElementById('allocation_method_hidden');
+    if (hiddenField) {
+        hiddenField.value = method;
+        console.log('Hidden field updated to:', method);
+    }
+    
+    selectedMethod = method;
+    
+    // Update debug info
+    const debugSpan = document.getElementById('methodDebug');
+    if (debugSpan) {
+        debugSpan.textContent = `(Избран: ${method})`;
+    }
+    
+    // Hide hint
+    const hint = document.getElementById('methodHint');
+    if (hint) {
+        hint.style.display = 'none';
+    }
+    
+    console.log('Final selectedMethod value:', selectedMethod);
+    updatePreview();
+}
+
+function applyTemplate(templateName) {
+    const template = templates[templateName];
+    if (template) {
+        document.getElementById('code').value = template.code;
+        document.getElementById('name').value = template.name;
+        document.getElementById('description').value = template.description;
+        
+        selectMethod(template.allocation_method);
+        updatePreview();
+    }
+}
+
+function updateCodePreview() {
+    updatePreview();
+}
+
+function previewCategory() {
+    updatePreview();
+    // Scroll to preview
+    document.getElementById('categoryPreview').scrollIntoView({ behavior: 'smooth' });
+}
+
+function updatePreview() {
+    const building = document.getElementById('building_id');
+    const code = document.getElementById('code').value;
+    const name = document.getElementById('name').value;
+    const description = document.getElementById('description').value;
+    const isActive = document.getElementById('is_active').checked;
+    const buildingName = building.options[building.selectedIndex]?.text || 'Не е избрана';
+    
+    const methodNames = {
+        'shares': 'По идеални части',
+        'per_unit': 'Еднакво за всички',
+        'per_person': 'По брой живущи',
+        'metered': 'По показания'
+    };
+    
+    const preview = document.getElementById('categoryPreview');
+    
+    if (!code && !name && !selectedMethod) {
+        preview.innerHTML = `
+            <div class="text-center text-muted py-3">
+                <i class="fas fa-tag fa-2x mb-2"></i>
+                <p class="mb-0">Попълнете полетата за преглед на категорията</p>
+            </div>
+        `;
+        return;
+    }
+    
+    preview.innerHTML = `
+        <div class="mb-3">
+            <h6 class="mb-2">${name || 'Категория без име'}</h6>
+            <div class="code-preview mb-2">${code || 'no_code'}</div>
+            <p class="small text-muted mb-2">${description || 'Няма описание'}</p>
+        </div>
+        
+        <div class="row small">
+            <div class="col-6"><strong>Сграда:</strong></div>
+            <div class="col-6">${buildingName}</div>
+        </div>
+        
+        <div class="row small">
+            <div class="col-6"><strong>Метод:</strong></div>
+            <div class="col-6">${selectedMethod ? methodNames[selectedMethod] : 'Не е избран'}</div>
+        </div>
+        
+        <div class="row small">
+            <div class="col-6"><strong>Статус:</strong></div>
+            <div class="col-6">
+                <span class="badge bg-${isActive ? 'success' : 'secondary'}">
+                    ${isActive ? 'Активна' : 'Неактивна'}
+                </span>
+            </div>
+        </div>
+        
+        ${selectedMethod ? `
+            <div class="mt-3">
+                <small class="text-muted">
+                    <strong>Разпределение:</strong><br>
+                    ${getMethodDescription(selectedMethod)}
+                </small>
+            </div>
+        ` : ''}
+    `;
+}
+
+function getMethodDescription(method) {
+    const descriptions = {
+        'shares': 'Разходът ще се разпределя пропорционално на идеалните части на всеки апартамент.',
+        'per_unit': 'Разходът ще се разделя еднакво между всички апартаменти в сградата.',
+        'per_person': 'Разходът ще се разпределя според броя на обитателите в всеки апартамент.',
+        'metered': 'Разходът ще се разпределя според показанията на индивидуални измервателни уреди.'
+    };
+    return descriptions[method] || '';
+}
+
+function resetForm() {
+    if (confirm('Сигурни ли сте, че искате да изчистите формата?')) {
+        document.getElementById('categoryForm').reset();
+        document.querySelectorAll('.method-card').forEach(card => {
+            card.classList.remove('selected');
+        });
+        selectedMethod = null;
+        updatePreview();
+    }
+}
+
+// Form submission
+document.getElementById('categoryForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    // Validate required fields
+    const buildingId = document.getElementById('building_id').value;
+    const code = document.getElementById('code').value;
+    const name = document.getElementById('name').value;
+    
+    if (!buildingId) {
+        showAlert('Моля, изберете сграда', 'warning');
+        document.getElementById('building_id').focus();
+        return;
+    }
+    if (!code) {
+        showAlert('Моля, въведете код на категорията', 'warning');
+        document.getElementById('code').focus();
+        return;
+    }
+    if (!name) {
+        showAlert('Моля, въведете име на категорията', 'warning');
+        document.getElementById('name').focus();
+        return;
+    }
+    if (!selectedMethod) {
+        showAlert('Моля, изберете метод на разпределение', 'warning');
+        // Show hint
+        const hint = document.getElementById('methodHint');
+        if (hint) {
+            hint.style.display = 'block';
+        }
+        // Scroll to method selection
+        document.querySelector('.method-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+    }
+    
+    // Prepare form data
+    const formData = {
+        building_id: parseInt(buildingId),
+        code: code,
+        name: name,
+        description: document.getElementById('description').value,
+        allocation_method: selectedMethod,
+        is_active: document.getElementById('is_active').checked,
+        settings: {}
+    };
+    
+    // Add advanced settings
+    const defaultAmount = document.getElementById('default_amount').value;
+    const sortOrder = document.getElementById('sort_order').value;
+    const autoGenerate = document.getElementById('auto_generate').checked;
+    const notifications = document.getElementById('notifications').checked;
+    const customSettings = document.getElementById('custom_settings').value;
+    
+    if (defaultAmount) formData.settings.default_amount = parseFloat(defaultAmount);
+    if (sortOrder) formData.settings.order = parseInt(sortOrder);
+    formData.settings.auto_generate = autoGenerate;
+    formData.settings.notifications = notifications;
+    
+    if (customSettings) {
+        try {
+            const custom = JSON.parse(customSettings);
+            formData.settings = {...formData.settings, ...custom};
+        } catch (e) {
+            showAlert('Невалиден JSON в допълнителните настройки', 'warning');
+            return;
+        }
+    }
+    
+    // Submit via AJAX
+    fetch('/finance/api/categories', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showAlert('Категорията е създадена успешно!', 'success');
+            setTimeout(() => {
+                window.location.href = '{{ url_for("finance.categories") }}';
+            }, 1500);
+        } else {
+            showAlert('Грешка при създаване: ' + (data.error || 'Unknown error'), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showAlert('Грешка при създаване на категорията', 'danger');
+    });
+});
+
+function showAlert(message, type = 'info') {
+    const alert = document.createElement('div');
+    alert.className = `alert alert-${type} alert-dismissible fade show`;
+    alert.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alert, container.firstChild);
+    
+    setTimeout(() => {
+        alert.remove();
+    }, 5000);
+}
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    updatePreview();
+    
+    // Add event listeners to method cards
+    document.querySelectorAll('.method-card').forEach((card, index) => {
+        console.log('Adding event listener to card', index, 'with method:', card.dataset.method);
+        
+        // Click event
+        card.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            const method = this.dataset.method;
+            console.log('Card clicked, method:', method);
+            selectMethod(method);
+        });
+        
+        // Hover events for visual feedback
+        card.addEventListener('mouseenter', function() {
+            if (!this.classList.contains('selected')) {
+                this.style.backgroundColor = '#f8f9fa';
+            }
+        });
+        
+        card.addEventListener('mouseleave', function() {
+            if (!this.classList.contains('selected')) {
+                this.style.backgroundColor = '';
+            }
+        });
+        
+        // Also add cursor pointer style
+        card.style.cursor = 'pointer';
+        
+        // Make it clear that it's clickable
+        card.setAttribute('tabindex', '0');
+        card.setAttribute('role', 'button');
+        card.setAttribute('aria-pressed', 'false');
+        
+        // Keyboard support
+        card.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                const method = this.dataset.method;
+                selectMethod(method);
+            }
+        });
+    });
+    
+    console.log('Total method cards found:', document.querySelectorAll('.method-card').length);
+    
+    // Auto-select first method if none selected
+    if (!selectedMethod) {
+        console.log('No method selected, auto-selecting shares');
+        selectMethod('shares');
+    }
+});
+</script>
+{% endblock %}

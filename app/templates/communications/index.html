@@ -1,0 +1,281 @@
+{% extends "base.html" %}
+
+{% block title %}Communications{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-comments me-2"></i>Communications</h2>
+            <p class="text-muted">Announcements, notifications and building communications</p>
+        </div>
+        <div class="btn-group" role="group">
+            <a href="{{ url_for('communications.announcements') }}" class="btn btn-outline-primary">
+                <i class="fas fa-bullhorn me-1"></i>All Announcements
+            </a>
+            <a href="{{ url_for('communications.new_announcement') }}" class="btn btn-primary">
+                <i class="fas fa-plus me-1"></i>New Announcement
+            </a>
+            <a href="{{ url_for('communications.notifications') }}" class="btn btn-outline-info">
+                <i class="fas fa-bell me-1"></i>Notifications
+            </a>
+        </div>
+    </div>
+
+    <!-- Building Communication Stats -->
+    {% if building_stats %}
+    <div class="row mb-4">
+        {% for stat in building_stats %}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h6 class="card-title mb-0">{{ stat.building.name }}</h6>
+                        {% if stat.unread_count > 0 %}
+                        <span class="badge bg-danger">{{ stat.unread_count }} new</span>
+                        {% endif %}
+                    </div>
+                    <small class="text-muted">{{ stat.building.address_display }}</small>
+                </div>
+                <div class="card-body">
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="border-end">
+                                <h4 class="text-primary">{{ stat.recent_count }}</h4>
+                                <small class="text-muted">Recent announcements</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <h4 class="text-{% if stat.unread_count > 0 %}danger{% else %}success{% endif %}">
+                                {{ stat.unread_count }}
+                            </h4>
+                            <small class="text-muted">Current announcements</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-light">
+                    <div class="d-flex gap-2">
+                        <a href="{{ url_for('communications.announcements', building_id=stat.building.id) }}" 
+                           class="btn btn-sm btn-outline-primary flex-fill">
+                            <i class="fas fa-eye me-1"></i>View All
+                        </a>
+                        <a href="{{ url_for('communications.new_announcement', building_id=stat.building.id) }}" 
+                           class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-plus me-1"></i>Post
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Recent Announcements -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5><i class="fas fa-bullhorn me-2"></i>Recent Announcements</h5>
+                    <a href="{{ url_for('communications.announcements') }}" class="btn btn-sm btn-outline-primary">
+                        View All
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if announcements %}
+                        {% for announcement in announcements %}
+                        <div class="d-flex mb-3 pb-3 {% if not loop.last %}border-bottom{% endif %}">
+                            <!-- Urgency Indicator -->
+                            <div class="me-3">
+                                {% if announcement.is_urgent %}
+                                    <span class="badge bg-danger p-2">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-light text-dark p-2">
+                                        <i class="fas fa-info-circle"></i>
+                                    </span>
+                                {% endif %}
+                            </div>
+
+                            <!-- Announcement Content -->
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="mb-1">
+                                            <a href="{{ url_for('communications.view_announcement', announcement_id=announcement.id) }}" 
+                                               class="text-decoration-none">
+                                                {{ announcement.title }}
+                                                {% if announcement.is_urgent %}
+                                                    <span class="badge bg-danger ms-1">URGENT</span>
+                                                {% endif %}
+                                            </a>
+                                        </h6>
+                                        <p class="text-muted mb-2">
+                                            {{ announcement.body[:200] }}{% if announcement.body|length > 200 %}...{% endif %}
+                                        </p>
+                                        <div class="d-flex align-items-center gap-3">
+                                            <small class="text-muted">
+                                                <i class="fas fa-building me-1"></i>{{ announcement.building.name }}
+                                            </small>
+                                            <small class="text-muted">
+                                                <i class="fas fa-user me-1"></i>{{ announcement.author.full_name }}
+                                            </small>
+                                            <small class="text-muted">
+                                                <i class="fas fa-calendar me-1"></i>{{ announcement.created_at.strftime('%d.%m.%Y') }}
+                                            </small>
+                                            {% if announcement.views_count > 0 %}
+                                            <small class="text-muted">
+                                                <i class="fas fa-eye me-1"></i>{{ announcement.views_count }} views
+                                            </small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="text-end">
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{{ url_for('communications.view_announcement', announcement_id=announcement.id) }}" 
+                                               class="btn btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            {% if current_user.is_superuser or announcement.author_id == current_user.id %}
+                                            <a href="{{ url_for('communications.edit_announcement', announcement_id=announcement.id) }}" 
+                                               class="btn btn-outline-warning">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Audience Info -->
+                                {% if announcement.audience and (announcement.audience.entrances or announcement.audience.floors or announcement.audience.roles) %}
+                                <div class="mt-2">
+                                    <small class="text-info">
+                                        <i class="fas fa-users me-1"></i>
+                                        Targeted to:
+                                        {% if announcement.audience.entrances %}
+                                            Entrance {{ announcement.audience.entrances|join(', ') }}
+                                        {% endif %}
+                                        {% if announcement.audience.floors %}
+                                            {% if announcement.audience.entrances %} • {% endif %}
+                                            Floor {{ announcement.audience.floors|join(', ') }}
+                                        {% endif %}
+                                        {% if announcement.audience.roles %}
+                                            {% if announcement.audience.entrances or announcement.audience.floors %} • {% endif %}
+                                            {{ announcement.audience.roles|join(', ')|title }}
+                                        {% endif %}
+                                    </small>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        <!-- Load More Button -->
+                        {% if announcements|length >= 20 %}
+                        <div class="text-center mt-3">
+                            <a href="{{ url_for('communications.announcements') }}" class="btn btn-outline-primary">
+                                <i class="fas fa-arrow-down me-1"></i>Load More Announcements
+                            </a>
+                        </div>
+                        {% endif %}
+
+                    {% else %}
+                        <!-- No Announcements -->
+                        <div class="text-center py-5">
+                            <i class="fas fa-bullhorn fa-3x text-muted mb-3"></i>
+                            <h4>No Announcements</h4>
+                            <p class="text-muted">There are no recent announcements for your buildings.</p>
+                            {% if current_user.has_role('manager') or current_user.is_superuser %}
+                            <a href="{{ url_for('communications.new_announcement') }}" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>Create First Announcement
+                            </a>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="fas fa-bolt me-2"></i>Quick Actions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('communications.new_announcement') }}" class="btn btn-primary w-100">
+                                <i class="fas fa-plus-circle me-2"></i>New Announcement
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('communications.announcements', urgent='true') }}" class="btn btn-warning w-100">
+                                <i class="fas fa-exclamation-triangle me-2"></i>Urgent Only
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('communications.notifications') }}" class="btn btn-info w-100">
+                                <i class="fas fa-bell me-2"></i>My Notifications
+                            </a>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('communications.notification_settings') }}" class="btn btn-outline-secondary w-100">
+                                <i class="fas fa-cog me-2"></i>Settings
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh for new announcements every 5 minutes
+setInterval(function() {
+    // Check for new notifications via API
+    fetch('/communications/api/notifications/count')
+        .then(response => response.json())
+        .then(data => {
+            if (data.count > 0) {
+                // Update notification badge in navigation
+                updateNotificationBadge(data.count);
+            }
+        })
+        .catch(error => {
+            console.log('Error checking notifications:', error);
+        });
+}, 300000); // 5 minutes
+
+function updateNotificationBadge(count) {
+    // Update badge in navigation if it exists
+    const badge = document.querySelector('.navbar .notification-badge');
+    if (badge) {
+        badge.textContent = count;
+        badge.style.display = count > 0 ? 'inline' : 'none';
+    }
+}
+
+// Mark announcement as read when clicked
+document.querySelectorAll('[data-announcement-id]').forEach(link => {
+    link.addEventListener('click', function() {
+        const announcementId = this.dataset.announcementId;
+        fetch(`/communications/api/announcements/${announcementId}/mark-read`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        }).catch(error => {
+            console.log('Error marking as read:', error);
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - WebPortal{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+            <h1 class="h2">
+                <i class="bi bi-speedometer2"></i> Dashboard
+            </h1>
+            <div class="btn-toolbar mb-2 mb-md-0">
+                <div class="btn-group me-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary">Експорт</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Welcome message -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="alert alert-primary" role="alert">
+            <i class="bi bi-person-check-fill me-2"></i>
+            <strong>Добре дошли, {{ current_user.email }}!</strong>
+            {% if current_user.is_superuser %}
+                Имате администраторски права в системата.
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Statistics cards -->
+<div class="row mb-4">
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-primary shadow h-100 py-2" style="border-left: 0.25rem solid #4e73df !important;">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Сгради в системата
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_buildings }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-building fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-success shadow h-100 py-2" style="border-left: 0.25rem solid #1cc88a !important;">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Общо обекти
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_units }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-door-open fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card border-left-info shadow h-100 py-2" style="border-left: 0.25rem solid #36b9cc !important;">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Потребители
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ stats.total_users }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="bi bi-people fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick actions -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-lightning-fill me-2"></i>Бързи действия
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if current_user.is_superuser or current_user.global_role.value in ['superadmin', 'staff'] %}
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('admin.index') }}" class="btn btn-primary w-100">
+                            <i class="bi bi-gear me-2"></i>Админ панел
+                        </a>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('buildings.index') }}" class="btn btn-success w-100">
+                            <i class="bi bi-building me-2"></i>Сгради
+                        </a>
+                    </div>
+                    
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('finance.index') }}" class="btn btn-warning w-100">
+                            <i class="bi bi-currency-exchange me-2"></i>Финанси
+                        </a>
+                    </div>
+                    
+                    <div class="col-md-3 mb-2">
+                        <a href="{{ url_for('auth.profile') }}" class="btn btn-info w-100">
+                            <i class="bi bi-person me-2"></i>Профил
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- User memberships -->
+{% if current_user.memberships %}
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="bi bi-house-door me-2"></i>Вашите обекти
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Сграда</th>
+                                <th>Обект</th>
+                                <th>Роля</th>
+                                <th>От дата</th>
+                                <th>Статус</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for membership in current_user.memberships|selectattr('is_active')|list %}
+                            <tr>
+                                <td>{{ membership.unit.building.name }}</td>
+                                <td>{{ membership.unit.full_number }}</td>
+                                <td>
+                                    <span class="badge bg-primary">{{ membership.role.value }}</span>
+                                    {% if membership.is_primary %}
+                                        <span class="badge bg-success">Основен</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ membership.since.strftime('%d.%m.%Y') if membership.since }}</td>
+                                <td>
+                                    <span class="badge bg-success">Активен</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row">
+    <div class="col-12">
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>Все още нямате назначени обекти.</strong>
+            Свържете се с администратор за да получите достъп до сграда.
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Auto-refresh page every 5 minutes
+    setTimeout(function() {
+        window.location.reload();
+    }, 300000);
+</script>
+{% endblock %}
