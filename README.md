@@ -314,6 +314,27 @@ webportal/
 └── wsgi.py            # WSGI entry point
 ```
 
+### 🔄 Template Debugging & Принудително обновяване
+
+```bash
+# Принудително рестартиране с template reload
+./scripts/force_reload.sh
+
+# Template debugging с детайлна информация
+python scripts/template_debug.py
+
+# Ръчно стартиrane с force reload
+export TEMPLATES_AUTO_RELOAD=1
+export FLASK_DEBUG=1
+python run_debug.py
+```
+
+**Когато темплейтите не се обновяват:**
+1. **Hard refresh в браузъра:** `Ctrl + F5` (Windows/Linux) or `Cmd + Shift + R` (Mac)
+2. **Изчистване на Flask cache:** `rm -rf flask_session/`
+3. **Изчистване на Python cache:** `find . -name "*.pyc" -delete`
+4. **Force reload скрипт:** `./scripts/force_reload.sh`
+
 ### Стилове на код
 
 ```bash

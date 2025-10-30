@@ -102,6 +102,11 @@ class DevelopmentConfig(Config):
     DEBUG = True
     SQLALCHEMY_ECHO = True
     WTF_CSRF_ENABLED = False
+    
+    # Template and static files auto-reload
+    TEMPLATES_AUTO_RELOAD = True
+    SEND_FILE_MAX_AGE_DEFAULT = 0  # Disable static file caching
+    EXPLAIN_TEMPLATE_LOADING = False  # Set to True for template debugging
 
 class ProductionConfig(Config):
     """Production configuration"""
