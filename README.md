@@ -6,7 +6,7 @@
 
 ```bash
 # 1. Клониране на проекта
-git clone <repository-url> webportal
+git clone https://github.com/HA-HUB-I/smart-home-building.git webportal
 cd webportal
 
 # 2. Инсталация на dependencies
@@ -488,7 +488,8 @@ tail -f logs/webportal.log
 ### Контакти за поддръжка
 
 - 🐛 **Bugs**: Отворете issue в GitHub repository
-- 📧 **Email**: support@webportal.local  
+- 📧 **Email**: support@unlck.app
+- 📱 **Telegram**: [HA_HUB_I](https://t.me/HA_HUB_I)
 - 📚 **Документация**: Вижте wiki страниците
 
 ---

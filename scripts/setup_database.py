@@ -45,14 +45,14 @@ def check_postgresql():
     if not run_command("which psql", "PostgreSQL client found", check=False):
         print("❌ PostgreSQL is not installed!")
         print("Please install PostgreSQL first:")
-        print("Ubuntu/Debian: sudo apt install postgresql postgresql-contrib")
-        print("CentOS/RHEL: sudo dnf install postgresql postgresql-server")
+        print("Ubuntu/Debian:  apt install postgresql postgresql-contrib")
+        print("CentOS/RHEL:  dnf install postgresql postgresql-server")
         return False
     
     # Проверка дали PostgreSQL service работи
-    if not run_command("sudo systemctl is-active postgresql", "PostgreSQL service is running", check=False):
+    if not run_command(" systemctl is-active postgresql", "PostgreSQL service is running", check=False):
         print("🔄 Starting PostgreSQL service...")
-        if not run_command("sudo systemctl start postgresql", "PostgreSQL service started"):
+        if not run_command(" systemctl start postgresql", "PostgreSQL service started"):
             print("❌ Failed to start PostgreSQL service!")
             return False
     
@@ -69,8 +69,8 @@ def get_database_config():
     config['host'] = input("Database host [localhost]: ") or "localhost"
     config['port'] = input("Database port [5432]: ") or "5432"
     config['admin_user'] = input("PostgreSQL admin user [postgres]: ") or "postgres"
-    config['db_name'] = input("Database name [webportal]: ") or "webportal"
-    config['db_user'] = input("Database user [webportal_user]: ") or "webportal_user"
+    config['db_name'] = input("Database name [webportal]: ") or "webportal_home"
+    config['db_user'] = input("Database user [webportal_user]: ") or "webportalhome_user"
     config['db_password'] = getpass.getpass("Database user password: ")
     
     if not config['db_password']:

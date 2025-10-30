@@ -41,7 +41,7 @@ print_error() {
 check_root() {
     if [[ $EUID -eq 0 ]]; then
         print_error "This script should NOT be run as root for security reasons!"
-        print_status "Run as the webportal user instead: sudo -u webportal $0"
+        print_status "Run as the webportal user instead:  -u webportal $0"
         exit 1
     fi
 }
@@ -59,8 +59,8 @@ create_directories() {
     
     for dir in "${directories[@]}"; do
         if [[ ! -d "$dir" ]]; then
-            sudo mkdir -p "$dir"
-            sudo chown $(whoami):$(whoami) "$dir"
+             mkdir -p "$dir"
+             chown $(whoami):$(whoami) "$dir"
             print_success "Created directory: $dir"
         fi
     done
@@ -186,8 +186,8 @@ set_permissions() {
     find "$WEBPORTAL_DIR/backend/templates" -type f -exec chmod 644 {} \;
     
     # Set permissions for log directory
-    sudo chown -R $(whoami):www-data /var/log/webportal
-    sudo chmod -R 775 /var/log/webportal
+     chown -R $(whoami):www-data /var/log/webportal
+     chmod -R 775 /var/log/webportal
     
     print_success "File permissions set"
 }
@@ -226,9 +226,9 @@ WantedBy=multi-user.target
 EOF
 
     # Install service file
-    sudo mv /tmp/webportal.service /etc/systemd/system/
-    sudo systemctl daemon-reload
-    sudo systemctl enable webportal
+     mv /tmp/webportal.service /etc/systemd/system/
+     systemctl daemon-reload
+     systemctl enable webportal
     
     print_success "Systemd service configured"
 }
@@ -247,11 +247,11 @@ setup_nginx() {
     
     # Copy nginx config if it doesn't exist in nginx sites
     if [[ ! -f "/etc/nginx/sites-available/webportal" ]]; then
-        sudo cp "$WEBPORTAL_DIR/nginx.conf" /etc/nginx/sites-available/webportal
-        sudo ln -sf /etc/nginx/sites-available/webportal /etc/nginx/sites-enabled/
+         cp "$WEBPORTAL_DIR/nginx.conf" /etc/nginx/sites-available/webportal
+         ln -sf /etc/nginx/sites-available/webportal /etc/nginx/sites-enabled/
         
         # Test nginx configuration
-        if sudo nginx -t; then
+        if  nginx -t; then
             print_success "Nginx configuration installed"
         else
             print_error "Nginx configuration test failed!"
@@ -265,11 +265,11 @@ start_services() {
     print_status "Starting services..."
     
     # Start WebPortal service
-    sudo systemctl start webportal
+     systemctl start webportal
     
     # Restart nginx if it's running
     if systemctl is-active --quiet nginx; then
-        sudo systemctl reload nginx
+         systemctl reload nginx
         print_success "Nginx reloaded"
     fi
     
@@ -319,10 +319,10 @@ show_summary() {
     echo "💾 Backup Directory: $BACKUP_DIR"
     echo ""
     echo "🔧 Service Commands:"
-    echo "  Start:   sudo systemctl start webportal"
-    echo "  Stop:    sudo systemctl stop webportal"
-    echo "  Restart: sudo systemctl restart webportal"
-    echo "  Status:  sudo systemctl status webportal"
+    echo "  Start:    systemctl start webportal"
+    echo "  Stop:     systemctl stop webportal"
+    echo "  Restart:  systemctl restart webportal"
+    echo "  Status:   systemctl status webportal"
     echo "  Logs:    journalctl -u webportal -f"
     echo ""
     echo "📊 Monitoring:"
@@ -383,8 +383,8 @@ case "${1:-}" in
         ;;
     "restart")
         print_status "Restarting WebPortal service..."
-        sudo systemctl restart webportal
-        sudo systemctl reload nginx
+         systemctl restart webportal
+         systemctl reload nginx
         print_success "Services restarted"
         ;;
     "status")
