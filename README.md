@@ -167,7 +167,7 @@ python webportal.py
 
 ```bash
 # 1. Клониране
-git clone <repository-url> webportal
+git clone https://github.com/HA-HUB-I/smart-home-building.git webportal
 cd webportal
 git checkout dev
 
@@ -186,7 +186,7 @@ cp env.template .env
 
 ```bash
 # 1. Клониране
-git clone <repository-url> webportal
+git clone https://github.com/HA-HUB-I/smart-home-building.git webportal
 cd webportal
 git checkout main
 
@@ -450,7 +450,7 @@ curl -H "Authorization: Bearer <token>" \
 Пълната API документация е достъпна на:
 - http://localhost:5001/api/docs (Swagger UI)
 
-## 🛠️ Поддръжка
+##  Поддръжка
 
 ### Логове
 
